@@ -64,12 +64,12 @@ O numerador mede a distância entre o valor atual e o mínimo histórico da sér
 #### 3.1.2. Min-Max Robusto (Q10/Q90)
 
 $$
-x^{norm}_t = \operatorname{clip}\!\left(\frac{x_t - Q_{10}}{Q_{90} - Q_{10}},\ 0,\ 1\right)
+x^{norm}_t = \text{clip}\!\left(\frac{x_t - Q_{10}}{Q_{90} - Q_{10}},\ 0,\ 1\right)
 $$
 
-onde $Q_{10}$ e $Q_{90}$ são os percentis 10 e 90 da série histórica completa, e $\operatorname{clip}(v, 0, 1)$ trunca o valor $v$ ao intervalo $[0, 1]$, isto é, retorna 0 se $v < 0$, 1 se $v > 1$, e $v$ caso contrário.
+onde $Q_{10}$ e $Q_{90}$ são os percentis 10 e 90 da série histórica completa, e $\text{clip}(v, 0, 1)$ trunca o valor $v$ ao intervalo $[0, 1]$, isto é, retorna 0 se $v < 0$, 1 se $v > 1$, e $v$ caso contrário.
 
-Funciona como o Min-Max, mas substitui os extremos absolutos (min e max) pelos percentis 10 e 90, que são estatisticamente mais estáveis. O $\operatorname{clip}$ garante que valores abaixo do $Q_{10}$ sejam tratados como 0 ("estresse mínimo normal") e valores acima do $Q_{90}$ como 1 ("estresse elevado"), sem que esses outliers distorçam a escala da faixa central.
+Funciona como o Min-Max, mas substitui os extremos absolutos (min e max) pelos percentis 10 e 90, que são estatisticamente mais estáveis. O $\text{clip}$ garante que valores abaixo do $Q_{10}$ sejam tratados como 0 ("estresse mínimo normal") e valores acima do $Q_{90}$ como 1 ("estresse elevado"), sem que esses outliers distorçam a escala da faixa central.
 
 | | |
 |---|---|
@@ -79,7 +79,7 @@ Funciona como o Min-Max, mas substitui os extremos absolutos (min e max) pelos p
 #### 3.1.3. Rank Percentil
 
 $$
-x^{norm}_t = \frac{\#\{s \in \{1,\ldots,N\} : x_s \leq x_t\}}{N}
+x^{norm}_t = \frac{|\{s \in \{1,\ldots,N\} : x_s \leq x_t\}|}{N}
 $$
 
 O numerador conta quantas observações da **amostra completa** são menores ou iguais ao valor atual; $N$ é o total de observações. O resultado é diretamente o **percentil empírico** de $x_t$ na distribuição histórica: um valor de 0,8 significa que 80% de todas as observações da amostra foram iguais ou inferiores ao nível atual. Note que o ranqueamento é feito sobre a amostra inteira (*ex post*), não apenas sobre observações anteriores a $t$.
