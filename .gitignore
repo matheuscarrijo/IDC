@@ -1,0 +1,15 @@
+# generated outputs (reproduzíveis via main.py)
+outputs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Excel temp files
+~$*
