@@ -87,7 +87,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-O script carrega os dados, constrói os três componentes e o índice (normalização min-max com janela expansiva), salva os CSVs em `outputs/data/` e as figuras em `outputs/figures/`.
+O script carrega os dados, constrói os três componentes e o índice (normalização min-max com janela expansiva), salva os CSVs em `outputs/data/` e as figuras em `outputs/figures/`. O relatório final do projeto fica em `outputs/report/`.
 
 ## 6. Estrutura do Repositório
 
@@ -106,7 +106,8 @@ O script carrega os dados, constrói os três componentes e o índice (normaliza
 │   └── plot.py          # gera as figuras
 ├── outputs/
 │   ├── data/            # series_raw.csv, components_raw.csv, index.csv
-│   └── figures/         # 6 figuras (PNG)
+│   ├── figures/         # 6 figuras (PNG)
+│   └── report/          # relatório final (não versionado)
 ├── main.py              # ponto de entrada
 ├── requirements.txt
 └── README.md
@@ -130,6 +131,10 @@ O script carrega os dados, constrói os três componentes e o índice (normaliza
 | `components_raw_q.png` | Componente Q em valores brutos |
 | `components_normalized.png` | Componentes normalizados por Min-Max sobrepostos |
 | `index.png` | Índice de Desconforto de Crédito |
+
+**Relatório (`outputs/report/`):**
+
+- **`IDC-report.docx`** — relatório final do projeto. A pasta é ignorada pelo Git para evitar versionamento de versões locais do documento.
 
 ## 8. Observações
 
