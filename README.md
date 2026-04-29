@@ -1,5 +1,7 @@
 # Índice de Desconforto de Crédito
 
+Autores: Lauro Gonzalez, Rafael Schiozer, Matheus L. Carrijo
+
 Este repositório contém o código e a documentação para a construção de um **índice** que captura o nível de desconforto de crédito das famílias brasileiras.
 
 ## Última Divulgação: fevereiro de 2026
