@@ -886,6 +886,11 @@ def _plot_index(index_df: pd.DataFrame) -> None:
                 (10, 0, "left", "center"),
             ],
             "end": [
+                (-6, -3, "right", "top"),
+                (-8, -4, "right", "top"),
+                (-10, 0, "right", "center"),
+                (-10, -6, "right", "top"),
+                (0, -8, "center", "top"),
                 (2, 7, "left", "bottom"),
                 (0, 7, "center", "bottom"),
                 (4, 5, "left", "bottom"),
