@@ -32,6 +32,18 @@ O valor **1,000** indica que, em fev-2026, o desconforto de crédito atingiu o p
 
 ![Componentes brutos do IDC](outputs/figures/components_raw.png)
 
+## Divulgação e Repercussão
+
+O relatório original de divulgação da criação do índice foi publicado em [Índice de Desconforto de Crédito (IDC)](https://eaesp.fgv.br/producao-intelectual/indice-desconforto-credito-idc). A partir da divulgação inicial, o IDC é atualizado e divulgado sempre que o Banco Central atualiza os dados usados no índice, possivelmente em frequência mensal.
+
+A criação do IDC e seus resultados iniciais foram repercutidos em reportagens e artigo de opinião:
+
+- [R7 — Desconforto do brasileiro com o crédito atinge maior nível em 12 anos; entenda](https://noticias.r7.com/economia/desconforto-do-brasileiro-com-o-credito-atinge-maior-nivel-em-12-anos-entenda-27042026/) (27/04/2026)
+- [UOL — Novo indicador da FGV mede mal-estar da população com o endividamento](https://economia.uol.com.br/colunas/mariana-barbosa/2026/04/24/novo-indicador-da-fgv-mede-mal-estar-da-populacao-com-o-endividamento.htm) (24/04/2026)
+- [Valor Econômico — Desconforto das famílias com crédito atinge o maior nível em 12 anos, diz FGV EAESP](https://valor.globo.com/brasil/noticia/2026/04/24/desconforto-das-famlias-com-crdito-atinge-o-maior-nvel-em-12-anos-diz-fgv-eaesp.ghtml) (24/04/2026)
+- [Valor Econômico — Medindo o desconforto do crédito no Brasil](https://valor.globo.com/opiniao/coluna/medindo-o-desconforto-do-credito-no-brasil.ghtml), artigo de opinião sobre o IDC.
+- [SBT News — Famílias comprometem 29% da renda com dívidas e pressão do crédito cresce](https://sbtnews.sbt.com.br/noticia/economia/familias-comprometem-29-da-renda-com-dividas-e-pressao-do-credito-cresce) (24/04/2026)
+
 ## 1. Motivação
 
 O projeto surge no contexto de:
