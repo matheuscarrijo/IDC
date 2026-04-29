@@ -166,6 +166,9 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 │   ├── figures/         # 6 figuras (PNG)
 │   └── report/          # relatório final (não versionado)
 ├── main.py              # ponto de entrada
+├── CITATION.cff         # autoria e citação recomendada
+├── LICENSE              # licença MIT para o código-fonte
+├── LICENSE-DATA.md      # licença CC BY 4.0 para documentação e outputs autorais
 ├── requirements.txt
 └── README.md
 ```
@@ -216,3 +219,21 @@ python -m src.download_bcb_release YYYYMM
 **Identificação das séries dentro da planilha:** em cada aba, a **linha 7** contém o cabeçalho `SGS` com o número identificador de cada série no sistema SGS/BCB. Exemplo: a série **29034** está na célula **D7** da aba **`Tab 27`**.
 
 ---
+
+## 9. Autoria e Citação
+
+O Índice de Desconforto de Crédito (IDC) foi idealizado e implementado por **Lauro Gonzalez**, **Rafael Schiozer** e **Matheus L. Carrijo**, pesquisadores integrantes do **FGVcemif** e da **FGV-EAESP**.
+
+Ao citar ou reutilizar o IDC, recomenda-se a seguinte referência:
+
+> Gonzalez, Lauro; Schiozer, Rafael; Carrijo, Matheus L. Índice de Desconforto de Crédito (IDC). FGVcemif/FGV-EAESP. Licenciado sob CC BY 4.0.
+
+Veja também o arquivo [CITATION.cff](CITATION.cff).
+
+## 10. Licença
+
+Este repositório usa licenciamento em camadas:
+
+- O **código-fonte** é disponibilizado sob a [MIT License](LICENSE).
+- A **documentação autoral, metodologia autoral, figuras, componentes calculados e índice agregado produzidos pelo IDC** são disponibilizados sob a [Creative Commons Attribution 4.0 International (CC BY 4.0)](LICENSE-DATA.md), salvo indicação em contrário.
+- **Dados brutos, planilhas, relatórios, PDFs, documentação metodológica e demais materiais obtidos do Banco Central do Brasil ou de terceiros não são relicenciados por este repositório**. Esses materiais permanecem sujeitos aos termos, licenças e condições das respectivas fontes originais.
