@@ -175,7 +175,7 @@ def _apply_excel_style() -> None:
     })
 
 
-def _style_ax(ax, xlabel: str = "Data", ylabel: str = None, ylim: tuple = None) -> None:
+def _style_ax(ax, xlabel: str = None, ylabel: str = None, ylim: tuple = None) -> None:
     for spine in ax.spines.values():
         spine.set_visible(True)
         spine.set_color("#808080")
@@ -666,7 +666,7 @@ def _plot_raw_component_panel(
     rng = ymax - ymin
     _style_ax(
         ax,
-        xlabel="Data" if show_xlabel else None,
+        xlabel=None,
         ylabel=unit,
         ylim=(ymin - rng * 0.05, ymax + rng * 0.20),
     )
@@ -838,11 +838,19 @@ def _plot_components_normalized(index_df: pd.DataFrame) -> None:
         )
 
     _style_ax(ax, ylabel="[0 – 1]", ylim=(-0.02, 1.05))
-    _add_events(ax)
-    ax.legend(loc="upper left")
+    _add_events(ax, label_positions={
+        "Pandemia\nCOVID-19": {"coords": "data", "y": 0.80, "ha": "center", "va": "center"},
+        "Programa\nDesenrola": {"coords": "data", "y": 0.25, "ha": "center", "va": "center"},
+    })
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.13),
+        ncol=3,
+        frameon=False,
+    )
     ax.set_title("Componentes Normalizados — Min-Max — Janela Expansiva")
 
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0.06, 1, 1])
     _save(fig, "components_normalized.png")
 
 
