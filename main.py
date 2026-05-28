@@ -1,4 +1,5 @@
 from pathlib import Path
+import pandas as pd
 
 from src.build_index import build_components, build_index
 from src.load_data import load_raw_series
@@ -37,6 +38,24 @@ def main() -> None:
     index_df.loc[index_df.index < "2014-01-01"] = float("nan")
     index_df.to_csv(DATA_OUT / "index.csv")
 
+    # Salva arquivo Excel consolidado com dados brutos e normalizados
+    excel_path = DATA_OUT / "idc_data.xlsx"
+    print(f"Salvando planilha consolidada em {excel_path}...")
+    
+    # Criamos cópias para renomear os índices para exibição amigável no Excel
+    components_excel = components.copy()
+    components_excel.index.name = "Data"
+    index_excel = index_df.copy()
+    index_excel.index.name = "Data"
+    
+    # Formata datas como string 'YYYY-MM-DD' para facilitar visualização no Excel
+    components_excel.index = components_excel.index.strftime("%Y-%m-%d")
+    index_excel.index = index_excel.index.strftime("%Y-%m-%d")
+
+    with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
+        index_excel.to_excel(writer, sheet_name="IDC e Normalizados")
+        components_excel.to_excel(writer, sheet_name="Componentes Brutos")
+
     _update_readme(components, index_df)
     plot_all(components, index_df)
     _print_summary(index_df)
@@ -53,7 +72,7 @@ def _print_summary(index_df) -> None:
         f" {s.std():8.3f} {s.min():8.3f} {s.max():8.3f}"
     )
     print("\nOutputs salvos em:")
-    print("  data/processed/   — series_raw.csv, components_raw.csv, index.csv")
+    print("  data/processed/   — series_raw.csv, components_raw.csv, index.csv, idc_data.xlsx")
     print("  outputs/figures/  — 6 figuras (PNG)")
 
 

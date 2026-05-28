@@ -14,10 +14,10 @@ Com a divulgação em **abr-2026** das estatísticas monetárias e de crédito d
 <!-- IDC_LATEST_START -->
 | Indicador | Valor bruto | Valor normalizado |
 |---|---:|---:|
-| IDC | — | **1,000** |
-| C — comprometimento de renda | 29,7% | 1,000 |
-| I — inadimplência 90+ dias | 7,2% | 1,000 |
-| Q — crédito oneroso no crédito livre PF | 25,1% | 1,000 |
+| IDC | — | **0,954** |
+| C — comprometimento de renda | 29,3% | 0,968 |
+| I — inadimplência 90+ dias | 7,0% | 0,938 |
+| Q — crédito oneroso no crédito livre PF | 24,8% | 0,955 |
 <!-- IDC_LATEST_END -->
 
 
@@ -30,10 +30,10 @@ O valor **1,000** indica que, em fev-2026, o desconforto de crédito atingiu o p
 <!-- IDC_STATS_START -->
 | Estatística | Valor |
 |---|---:|
-| Último dado | fev-2026 |
-| Atual | 1,000 |
-| Média | 0,502 |
-| Desvio padrão | 0,285 |
+| Último dado | mar-2026 |
+| Atual | 0,954 |
+| Média | 0,505 |
+| Desvio padrão | 0,286 |
 | Mínimo | 0,012 |
 | Máximo | 1,000 |
 <!-- IDC_STATS_END -->
@@ -176,7 +176,8 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 │   └── processed/
 │       ├── series_raw.csv
 │       ├── components_raw.csv
-│       └── index.csv
+│       ├── index.csv
+│       └── idc_data.xlsx             # planilha consolidada com dados brutos e normalizados
 ├── src/
 │   ├── download_bcb_release.py   # baixa a divulgação mensal do BCB (XLSX + PDF)
 │   ├── load_data.py     # carrega as séries do Excel
@@ -201,6 +202,7 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 - **`series_raw.csv`** — séries brutas carregadas do Excel
 - **`components_raw.csv`** — componentes C, I, Q antes da normalização
 - **`index.csv`** — componentes normalizados (C_norm, I_norm, Q_norm) e índice agregado (a partir de jan-2014)
+- **`idc_data.xlsx`** — planilha Excel consolidada contendo tanto os componentes brutos quanto os componentes normalizados e o IDC agregado (em abas separadas).
 
 **Figuras (`outputs/figures/`):**
 
