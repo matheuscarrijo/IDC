@@ -247,7 +247,7 @@ O Índice de Desconforto de Crédito (IDC) foi idealizado e implementado por **L
 
 Ao citar ou reutilizar o IDC, recomenda-se a seguinte referência:
 
-> Gonzalez, Lauro; Schiozer, Rafael; Carrijo, Matheus L. Índice de Desconforto de Crédito (IDC). FGVcemif/FGV-EAESP. Licenciado sob CC BY 4.0.
+> Gonzalez, Lauro; Schiozer, Rafael; Carrijo, Matheus L. Índice de Desconforto de Crédito (IDC). FGVcemif/FGV-EAESP.
 
 Veja também o arquivo [CITATION.cff](CITATION.cff).
 
