@@ -4,12 +4,12 @@ Autores: Lauro Gonzalez, Rafael Schiozer, Matheus L. Carrijo
 
 Este repositório contém o código e a documentação para a construção de um **índice** que captura o nível de desconforto de crédito das famílias brasileiras.
 
-## Última Divulgação: fevereiro de 2026
+## Última Divulgação: março de 2026
 
 **O IDC mostra quão perto o desconforto de crédito das famílias está do pior nível já observado no histórico disponível.**
 
 
-Com a divulgação em **abr-2026** das estatísticas monetárias e de crédito do Banco Central, o último mês calculável do IDC é **fev-2026**, pois a série de comprometimento de renda está disponível somente até esse mês
+Com a divulgação em **maio de 2026** das estatísticas monetárias e de crédito do Banco Central, o último mês calculável do IDC é **mar-2026**, pois a série de comprometimento de renda está disponível somente até esse mês.
 
 <!-- IDC_LATEST_START -->
 | Indicador | Valor bruto | Valor normalizado |
@@ -21,7 +21,7 @@ Com a divulgação em **abr-2026** das estatísticas monetárias e de crédito d
 <!-- IDC_LATEST_END -->
 
 
-O valor **1,000** indica que, em fev-2026, o desconforto de crédito atingiu o ponto máximo da janela histórica observada pelo índice. Como os três componentes também estão em `1,000` após normalização, o resultado reflete uma combinação simultânea de comprometimento de renda, inadimplência e composição do crédito em seus maiores níveis relativos na amostra.
+O valor **0,954** indica que, em mar-2026, o desconforto de crédito permaneceu muito próximo do ponto máximo da janela histórica observada pelo índice. Em relação a fev-2026, quando o IDC marcou **1,000**, houve recuo simultâneo dos três componentes, embora comprometimento de renda, inadimplência e composição do crédito continuem em patamar relativo elevado na amostra.
 
 É importante destacar que o IDC não é uma medida absoluta de endividamento; ele indica a posição do mês corrente em relação ao histórico disponível.
 
@@ -136,7 +136,7 @@ onde:
 
 O horizonte efetivo do índice é determinado pela série mais curta disponível na planilha mensal do Banco Central — em geral, a SGS 29034 (comprometimento de renda), que é publicada com maior defasagem que as demais. A planilha pode conter observações mais recentes para algumas séries, mas o índice usa apenas os meses em que os três componentes C, I e Q estão disponíveis. O índice é exibido a partir de **jan-2014**, após ~34 meses de aquecimento da janela expansiva.
 
-Assim, a competência da divulgação do Banco Central não necessariamente coincide com o último mês calculável do IDC. Por exemplo, a divulgação **202604** traz a série de comprometimento de renda até **fev-2026** e as demais séries usadas no índice até **mar-2026**; como o IDC exige todos os componentes no mesmo mês, o índice calculado com essa divulgação termina em **fev-2026**.
+Assim, a competência da divulgação do Banco Central não necessariamente coincide com o último mês calculável do IDC. Por exemplo, a divulgação **202605** traz a série de comprometimento de renda até **mar-2026** e as demais séries usadas no índice até **abr-2026**; como o IDC exige todos os componentes no mesmo mês, o índice calculado com essa divulgação termina em **mar-2026**.
 
 ## 5. Como Reproduzir
 
@@ -149,10 +149,10 @@ pip install -r requirements.txt
 **Atualização mensal dos dados do Banco Central** a partir do diretório raiz do projeto:
 
 ```bash
-python -m src.download_bcb_release 202604
+python -m src.download_bcb_release 202605
 ```
 
-O comando acima baixa a tabela XLSX e o PDF do relatório mensal do Banco Central para `data/raw/202604/`. Por padrão, arquivos existentes não são sobrescritos; use `--overwrite` para forçar novo download.
+O comando acima baixa a tabela XLSX e o PDF do relatório mensal do Banco Central para `data/raw/202605/`. Por padrão, arquivos existentes não são sobrescritos; use `--overwrite` para forçar novo download.
 
 **Execução do índice** a partir do diretório raiz do projeto:
 
@@ -170,9 +170,9 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 │   │   ├── 202603/
 │   │   │   ├── 202603_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
 │   │   │   └── 202603_Texto_de_estatisticas_monetarias_e_de_credito.pdf
-│   │   └── 202604/
-│   │       ├── 202604_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
-│   │       └── 202604_Texto_de_estatisticas_monetarias_e_de_credito.pdf
+│   │   └── 202605/
+│   │       ├── 202605_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
+│   │       └── 202605_Texto_de_estatisticas_monetarias_e_de_credito.pdf
 │   └── processed/
 │       ├── series_raw.csv
 │       ├── components_raw.csv

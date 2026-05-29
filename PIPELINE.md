@@ -12,7 +12,7 @@ This document is written for automated agents executing the IDC monthly update. 
 2. Rebuilds all three IDC components (C, I, Q) and the aggregate index from scratch.
 3. Saves processed CSVs and a consolidated Excel workbook to `data/processed/`.
 4. Regenerates the six PNG figures in `outputs/figures/`.
-5. Updates the two auto-managed tables in `README.md`.
+5. Updates the two auto-managed tables and the latest-release narrative in `README.md`.
 6. **Generates the monthly update report** in `outputs/report/update-YYYYMM/` (see [Report generation](#report-generation)).
 7. Runs a report style/layout review and fixes any issues before committing.
 8. Creates a git commit with all changed files.
@@ -98,6 +98,16 @@ Expected console output ends with a summary like:
 ```
 
 Verify that "último dado" matches the expected reference month (typically two months before the release month).
+
+#### 4a. Review the README narrative
+
+`python3 main.py` updates the two managed README tables, but the agent must also review and update the surrounding narrative by hand. Before generating the report, inspect `README.md` and ensure that:
+
+- `## Última Divulgação` names the latest calculable reference month.
+- The paragraph immediately below it names the current BCB release month and the latest calculable IDC month.
+- The explanatory paragraph below `<!-- IDC_LATEST_END -->` describes the current IDC value and comparison with the previous month; it must not keep stale text from the prior release.
+- Reproduction examples and repository tree examples use the current `PERIOD` when they are intended to illustrate the latest release.
+- No stale prior-period strings remain in top-level README prose, except where they are explicitly used as historical comparison or generic examples.
 
 ### 5. Generate the monthly report
 
@@ -238,6 +248,7 @@ After `python3 main.py` completes, verify:
 - [ ] `data/processed/index.csv` — last row date matches the reference month.
 - [ ] `outputs/figures/index.png` — file modification timestamp is today.
 - [ ] `README.md` — the two auto-managed tables (between `<!-- IDC_LATEST_START/END -->` and `<!-- IDC_STATS_START/END -->`) show the new date and values.
+- [ ] `README.md` — the latest-release narrative around the managed tables has been manually reviewed and updated for the new release/reference month.
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.tex` — no `\placeholder{...}` commands remain.
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.pdf` — PDF compiled successfully (if lualatex available).
 - [ ] Codex style review of the filled `.tex` passes: bold is restricted to numbers, percentages, deltas, and abbreviated month-year values.
