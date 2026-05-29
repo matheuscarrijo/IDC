@@ -140,6 +140,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 | `\proxdivulgacao` | Next publication month (release month + 1) | `junho de 2026` |
 | `\mesproximo` | Next reference month (reference month + 1) | `abr-2026` |
 | `\reportdate` | Today's date in full Portuguese | `28 de maio de 2026` |
+| `\reportsubtitle` | Must name both publication and reference months | `Nota Técnica de Atualização --- Divulgação maio de 2026; competência março de 2026` |
 | IDC table value | Last value of `index` column | `0,954` |
 | C raw/norm, I raw/norm, Q raw/norm | Last row of `components_raw.csv` and `index.csv` | `29,3% / 0,968`, … |
 | Previous IDC, delta, direction | Compare last two rows of `index.csv` | `1,000`, `0,046`, `recuou` |
@@ -158,6 +159,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 - Normalised values range [0, 1]: 1.000 = worst in history, 0.000 = best. Always include this context.
 - Use comma as decimal separator (e.g. `0,954` not `0.954`).
 - Remove each `\placeholder{...}` wrapper and replace the whole command with the written text.
+- The report subtitle must make clear that the update/publication month and IDC reference month can differ. Use the pattern `Divulgação <mês de publicação>; competência <mês de referência>`.
 - Use `\textbf{}` only for numbers, percentages, deltas, and abbreviated month-year values such as `mar-2026`. Do not bold indicator names, institution names, prose labels, or explanatory phrases in running text.
 - Keep every figure's source note inside the same `figure` environment as its `\caption{...}`. Do not place `\fonte{BCB, elaboração própria.}` after `\end{figure}`, because the figure may float away from its source note and create duplicate-looking layout.
 - The main text must explicitly refer to every figure by number or `\ref{...}` and describe what it shows. Do not write prose that depends on the figure appearing immediately after the paragraph; LaTeX floats may move figures to later pages.
