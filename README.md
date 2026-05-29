@@ -4,24 +4,24 @@ Autores: Lauro Gonzalez, Rafael Schiozer, Matheus L. Carrijo
 
 Este repositório contém o código e a documentação para a construção de um **índice** que captura o nível de desconforto de crédito das famílias brasileiras.
 
-## Última Divulgação: março de 2026
+## Última Divulgação: fevereiro de 2026
 
 **O IDC mostra quão perto o desconforto de crédito das famílias está do pior nível já observado no histórico disponível.**
 
 
-Com a divulgação em **mai-2026** das estatísticas monetárias e de crédito do Banco Central, o último mês calculável do IDC é **mar-2026**, pois a série de comprometimento de renda está disponível somente até esse mês
+Com a divulgação em **abr-2026** das estatísticas monetárias e de crédito do Banco Central, o último mês calculável do IDC é **fev-2026**, pois a série de comprometimento de renda está disponível somente até esse mês
 
 <!-- IDC_LATEST_START -->
 | Indicador | Valor bruto | Valor normalizado |
 |---|---:|---:|
-| IDC | — | **0,954** |
-| C — comprometimento de renda | 29,3% | 0,968 |
-| I — inadimplência 90+ dias | 7,0% | 0,938 |
-| Q — crédito oneroso no crédito livre PF | 24,8% | 0,955 |
+| IDC | — | **1,000** |
+| C — comprometimento de renda | 29,7% | 1,000 |
+| I — inadimplência 90+ dias | 7,2% | 1,000 |
+| Q — crédito oneroso no crédito livre PF | 25,1% | 1,000 |
 <!-- IDC_LATEST_END -->
 
 
-O valor **0,954** indica que o desconforto de crédito em mar-2026 está muito próximo do pior nível já registrado (1,000, atingido em fev-2026). Os três componentes recuaram simultaneamente em relação ao mês anterior, mas permanecem em patamares historicamente elevados.
+O valor **1,000** indica que, em fev-2026, o desconforto de crédito atingiu o ponto máximo da janela histórica observada pelo índice. Como os três componentes também estão em `1,000` após normalização, o resultado reflete uma combinação simultânea de comprometimento de renda, inadimplência e composição do crédito em seus maiores níveis relativos na amostra.
 
 É importante destacar que o IDC não é uma medida absoluta de endividamento; ele indica a posição do mês corrente em relação ao histórico disponível.
 
@@ -30,10 +30,10 @@ O valor **0,954** indica que o desconforto de crédito em mar-2026 está muito p
 <!-- IDC_STATS_START -->
 | Estatística | Valor |
 |---|---:|
-| Último dado | mar-2026 |
-| Atual | 0,954 |
-| Média | 0,505 |
-| Desvio padrão | 0,286 |
+| Último dado | fev-2026 |
+| Atual | 1,000 |
+| Média | 0,502 |
+| Desvio padrão | 0,285 |
 | Mínimo | 0,012 |
 | Máximo | 1,000 |
 <!-- IDC_STATS_END -->
@@ -136,7 +136,7 @@ onde:
 
 O horizonte efetivo do índice é determinado pela série mais curta disponível na planilha mensal do Banco Central — em geral, a SGS 29034 (comprometimento de renda), que é publicada com maior defasagem que as demais. A planilha pode conter observações mais recentes para algumas séries, mas o índice usa apenas os meses em que os três componentes C, I e Q estão disponíveis. O índice é exibido a partir de **jan-2014**, após ~34 meses de aquecimento da janela expansiva.
 
-Assim, a competência da divulgação do Banco Central não necessariamente coincide com o último mês calculável do IDC. Por exemplo, a divulgação **202605** traz a série de comprometimento de renda até **mar-2026**; como o IDC exige todos os componentes no mesmo mês, o índice calculado com essa divulgação termina em **mar-2026**.
+Assim, a competência da divulgação do Banco Central não necessariamente coincide com o último mês calculável do IDC. Por exemplo, a divulgação **202604** traz a série de comprometimento de renda até **fev-2026** e as demais séries usadas no índice até **mar-2026**; como o IDC exige todos os componentes no mesmo mês, o índice calculado com essa divulgação termina em **fev-2026**.
 
 ## 5. Como Reproduzir
 
@@ -149,7 +149,7 @@ pip install -r requirements.txt
 **Atualização mensal dos dados do Banco Central** a partir do diretório raiz do projeto:
 
 ```bash
-python -m src.download_bcb_release 202605
+python -m src.download_bcb_release 202604
 ```
 
 O comando acima baixa a tabela XLSX e o PDF do relatório mensal do Banco Central para `data/raw/202604/`. Por padrão, arquivos existentes não são sobrescritos; use `--overwrite` para forçar novo download.
@@ -166,15 +166,17 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 
 ```
 ├── data/
-│   ├── raw/                         # não versionado — baixar via download_bcb_release.py
-│   │   └── YYYYMM/
-│   │       ├── YYYYMM_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
-│   │       └── YYYYMM_Texto_de_estatisticas_monetarias_e_de_credito.pdf
+│   ├── raw/
+│   │   ├── 202603/
+│   │   │   ├── 202603_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
+│   │   │   └── 202603_Texto_de_estatisticas_monetarias_e_de_credito.pdf
+│   │   └── 202604/
+│   │       ├── 202604_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
+│   │       └── 202604_Texto_de_estatisticas_monetarias_e_de_credito.pdf
 │   └── processed/
 │       ├── series_raw.csv
 │       ├── components_raw.csv
-│       ├── index.csv
-│       └── idc_data.xlsx             # planilha consolidada com dados brutos e normalizados
+│       └── index.csv
 ├── src/
 │   ├── download_bcb_release.py   # baixa a divulgação mensal do BCB (XLSX + PDF)
 │   ├── load_data.py     # carrega as séries do Excel
@@ -183,7 +185,7 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 │   └── plot.py          # gera as figuras
 ├── outputs/
 │   ├── figures/         # 6 figuras (PNG)
-│   └── report/          # não versionado (gerado pelo pipeline)
+│   └── report/          # relatório final (não versionado)
 ├── main.py              # ponto de entrada
 ├── CITATION.cff         # autoria e citação recomendada
 ├── LICENSE              # licença MIT para o código-fonte
@@ -199,7 +201,6 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 - **`series_raw.csv`** — séries brutas carregadas do Excel
 - **`components_raw.csv`** — componentes C, I, Q antes da normalização
 - **`index.csv`** — componentes normalizados (C_norm, I_norm, Q_norm) e índice agregado (a partir de jan-2014)
-- **`idc_data.xlsx`** — planilha Excel consolidada contendo tanto os componentes brutos quanto os componentes normalizados e o IDC agregado (em abas separadas).
 
 **Figuras (`outputs/figures/`):**
 
@@ -214,13 +215,13 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 
 **Relatório (`outputs/report/`):**
 
-- **`idc-update-YYYYMM.pdf`** — nota técnica de atualização mensal, gerada automaticamente pelo pipeline. A pasta não é versionada no Git; os relatórios são reproduzíveis a partir dos dados processados.
+- **`IDC-report.docx`** — relatório final do projeto. A pasta é ignorada pelo Git para evitar versionamento de versões locais do documento.
 
 ## 8. Estrutura e Fontes de Dados
 
-Os arquivos mensais em **`data/raw/YYYYMM/`** são a **fonte primária** para a construção do índice. Cada pasta mensal preserva o prefixo de competência `YYYYMM` usado pelo Banco Central. Esses arquivos **não são versionados no Git** (ver `.gitignore`) e devem ser baixados localmente via `download_bcb_release.py` antes de executar `main.py`.
+Os arquivos mensais em **`data/raw/YYYYMM/`** são a **fonte primária** para a construção do índice. Cada pasta mensal preserva o prefixo de competência `YYYYMM` usado pelo Banco Central no arquivo disponibilizado para download.
 
-Para cada competência, são baixados dois arquivos:
+Para cada competência, são armazenados dois arquivos:
 
 - **`YYYYMM_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx`** — planilha usada no cálculo do índice.
 - **`YYYYMM_Texto_de_estatisticas_monetarias_e_de_credito.pdf`** — relatório do Banco Central que acompanha a divulgação mensal dos dados.
