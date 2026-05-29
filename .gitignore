@@ -10,7 +10,6 @@ data/raw/
 
 # Internal — não versionar no GitHub público
 PIPELINE.md
-mailing_list.txt
 
 # Python
 __pycache__/
