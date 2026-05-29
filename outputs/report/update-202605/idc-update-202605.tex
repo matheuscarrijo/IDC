@@ -57,10 +57,12 @@
   position=above
 }
 
-% Nota de fonte abaixo de figuras e tabelas
+% Nota de fonte abaixo de figuras e tabelas.
+% Para figuras, mantenha a fonte dentro do ambiente figure, imediatamente apos
+% \caption{}, para que grafico, legenda e fonte flutuem como um unico bloco.
 \newcommand{\fonte}[1]{%
-  \vspace{-0.6\baselineskip}%
-  \par\small\textit{Fonte: #1}\par\vspace{0.8\baselineskip}%
+  \par\vspace{0.2\baselineskip}%
+  \small\textit{Fonte: #1}\par\vspace{0.8\baselineskip}%
 }
 
 % --- Tipografia e layout ------------------------------------------------------
@@ -176,9 +178,9 @@
 
 \section{Resumo}
 
-Com a publicação, em \textbf{\mespublicacao}, das Estatísticas Monetárias e de Crédito do
-Banco Central do Brasil (competência \textbf{\competencia}), o \textbf{Índice de Desconforto
-de Crédito (IDC)} foi recalculado e estendido até \textbf{\mesreferencia} --- último mês para
+Com a publicação, em \mespublicacao, das Estatísticas Monetárias e de Crédito do
+Banco Central do Brasil (competência \competencia), o Índice de Desconforto
+de Crédito (IDC) foi recalculado e estendido até \mesreferencia{} --- último mês para
 o qual há observação disponível da série de comprometimento de renda das famílias (SGS~29034),
 que delimita o horizonte de cálculo do índice.
 
@@ -190,11 +192,11 @@ Em mar-2026, o IDC atingiu 0,954, ante 1,000 em fev-2026, mantendo-se em patamar
   \centering
   \caption{Componentes brutos e valores normalizados do IDC --- \mesref.}
   \label{tab:componentes}
-  \begin{tabular}{p{9.5cm}rr}
+  \begin{tabular}{p{8.0cm}rr}
     \toprule
-    \textbf{Indicador} & \textbf{Valor bruto} & \textbf{Valor normalizado} \\
+    Indicador & Valor bruto & Valor normalizado \\
     \midrule
-    \textbf{IDC} (média dos componentes normalizados)
+    IDC (média dos componentes normalizados)
       & ---
       & \textbf{0,954} \\
     C --- Comprometimento de renda das famílias com a dívida
@@ -219,16 +221,16 @@ marcava \textbf{1,000} --- o índice recuou
 A melhora foi disseminada entre os três componentes, com quedas simultâneas em comprometimento de renda, inadimplência e participação das modalidades onerosas.
 
 \begin{itemize}
-  \item \textbf{Comprometimento de renda (C)} passou de \textbf{29,6\%} para
+  \item Comprometimento de renda (C) passou de \textbf{29,6\%} para
     \textbf{29,3\%} (-0,3~p.p.).
     O recuo de 29,6\% para 29,3\% reduziu o componente normalizado C de 1,000 para 0,968. Ainda assim, o comprometimento permanece entre os maiores valores da série bruta (posição 3 em ordem decrescente), indicando alívio marginal, mas sem afastamento relevante da zona de maior desconforto relativo.
 
-  \item \textbf{Inadimplência (I)} recuou de
+  \item Inadimplência (I) recuou de
     \textbf{7,2\%} para \textbf{7,0\%}
     (-0,2~p.p.).
     A inadimplência caiu de 7,2\% para 7,0\%, levando o componente normalizado I de 1,000 para 0,938. Como esse valor normalizado segue próximo de 1,000, a leitura ainda está perto do pior ponto histórico observado, embora a variação mensal sinalize redução do desconforto relativo nesse componente.
 
-  \item \textbf{Qualidade do crédito (Q)} caiu de
+  \item Qualidade do crédito (Q) caiu de
     \textbf{25,1\%} para \textbf{24,8\%}
     (-0,3~p.p.).
     A participação das modalidades onerosas passou de 25,1\% para 24,8\%, e o componente normalizado Q recuou de 1,000 para 0,955. O nível continua elevado na comparação histórica, o que sugere que a composição do crédito livre PF permanece concentrada em modalidades relativamente mais custosas, apesar da melhora no mês.
@@ -247,9 +249,8 @@ Em conjunto, os movimentos de março de 2026 apontam redução mensal do desconf
   }
   \caption{Evolução do Índice de Desconforto de Crédito (\janelainicio{} a \mesref).}
   \label{fig:indice}
+  \fonte{BCB, elaboração própria.}
 \end{figure}
-
-\fonte{BCB, elaboração própria.}
 
 \begin{figure}[htbp]
   \centering
@@ -260,20 +261,19 @@ Em conjunto, os movimentos de março de 2026 apontam redução mensal do desconf
   }
   \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref).}
   \label{fig:componentes}
+  \fonte{BCB, elaboração própria.}
 \end{figure}
-
-\fonte{BCB, elaboração própria.}
 
 \section{Próxima atualização}
 
 A próxima atualização do IDC está prevista para a divulgação seguinte das Estatísticas
-Monetárias e de Crédito do Banco Central, esperada para \textbf{\proxdivulgacao}.
+Monetárias e de Crédito do Banco Central, esperada para \proxdivulgacao.
 O índice será estendido para \mesproximo{} caso a série de comprometimento de renda das
 famílias (SGS~29034) avance para essa competência.
 
 \section*{Notas}
 
-\textbf{Sobre o IDC.} O Índice de Desconforto de Crédito (IDC) é construído a partir de
+Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir de
 três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
 comprometimento de renda das famílias com o serviço da dívida (SGS~29034), inadimplência
 da carteira de crédito livre PF --- atrasos superiores a 90 dias (SGS~21112) --- e
@@ -287,7 +287,7 @@ construção, o IDC mede a posição relativa do mês corrente em relação ao h
 pelo índice. O relatório de divulgação está disponível em
 \url{https://eaesp.fgv.br/producao-intelectual/indice-desconforto-credito-idc}.
 
-\textbf{Citação recomendada.} Gonzalez, L.; Schiozer, R.; Carrijo, M.~L.
+Citação recomendada. Gonzalez, L.; Schiozer, R.; Carrijo, M.~L.
 \textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.
 Licenciado sob CC~BY~4.0.
 
