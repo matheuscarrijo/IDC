@@ -103,7 +103,7 @@ Verify that "último dado" matches the expected reference month (typically two m
 
 `python3 main.py` updates the two managed README tables, but the agent must also review and update the surrounding narrative by hand. Before generating the report, inspect `README.md` and ensure that:
 
-- `## Última Divulgação` names the latest calculable reference month.
+- The latest-release heading is succinct and names both the BCB publication month and the IDC reference month, e.g. `## Atualização maio/2026 — competência mar/2026`.
 - The paragraph immediately below it names the current BCB release month and the latest calculable IDC month.
 - The explanatory paragraph below `<!-- IDC_LATEST_END -->` describes the current IDC value and comparison with the previous month; it must not keep stale text from the prior release.
 - Reproduction examples and repository tree examples use the current `PERIOD` when they are intended to illustrate the latest release.

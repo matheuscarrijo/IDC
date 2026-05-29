@@ -4,7 +4,7 @@ Autores: Lauro Gonzalez, Rafael Schiozer, Matheus L. Carrijo
 
 Este repositório contém o código e a documentação para a construção de um **índice** que captura o nível de desconforto de crédito das famílias brasileiras.
 
-## Última Divulgação: março de 2026
+## Atualização maio/2026 — competência mar/2026
 
 **O IDC mostra quão perto o desconforto de crédito das famílias está do pior nível já observado no histórico disponível.**
 
