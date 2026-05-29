@@ -1,6 +1,16 @@
 # generated outputs (reproduzíveis via main.py)
 # outputs/
-outputs/report/
+outputs/report/template-latex/
+outputs/report/template-docx/
+outputs/report/release/
+outputs/report/update-*/
+
+# BCB raw data (reproduzível via download_bcb_release.py)
+data/raw/
+
+# Internal — não versionar no GitHub público
+PIPELINE.md
+mailing_list.txt
 
 # Python
 __pycache__/
