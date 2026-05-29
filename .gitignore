@@ -11,9 +11,6 @@ data/raw/
 # Internal — não versionar no GitHub público
 PIPELINE.md
 mailing_list.txt
-.env
-.env.*
-!.env.example
 
 # Python
 __pycache__/
