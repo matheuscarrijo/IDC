@@ -1,0 +1,301 @@
+% !TEX program = lualatex
+% =============================================================================
+% Template LaTeX — Índice de Desconforto de Crédito (IDC)
+%
+% Compilar com: lualatex -interaction=nonstopmode template.tex (duas passagens)
+%
+% Uso para novo relatório mensal:
+%   1. Copie esta pasta para outputs/report/update-YYYYMM/
+%   2. Edite a seção "DADOS DO RELATÓRIO" abaixo
+%   3. Substitua os \placeholder{} no corpo pelo conteúdo real
+%   4. Compile duas vezes
+% =============================================================================
+
+\documentclass[11pt,a4paper]{article}
+
+% --- Geometria (margens idênticas ao DOCX original) ---------------------------
+\usepackage[
+  a4paper,
+  left=30mm,
+  right=30mm,
+  top=25mm,
+  bottom=25mm,
+  headheight=14mm,
+  headsep=6mm,
+  footskip=10mm
+]{geometry}
+
+% --- Fonte e codificação (LuaLaTeX / XeLaTeX) ---------------------------------
+\usepackage{fontspec}
+\usepackage{microtype}
+
+\setmainfont{TeX Gyre Pagella}   % clone de Palatino ≈ Cambria
+\setsansfont{TeX Gyre Heros}     % clone de Helvetica ≈ Calibri
+% Com MS Office instalado, descomente para fontes originais:
+% \setmainfont{Cambria}
+% \setsansfont{Calibri}[Scale=0.95]
+
+% --- Português do Brasil ------------------------------------------------------
+\usepackage[brazilian]{babel}
+\usepackage{csquotes}
+
+% --- Gráficos e tabelas -------------------------------------------------------
+\usepackage{graphicx}
+\graphicspath{{.}}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\captionsetup[figure]{
+  format=plain, labelformat=simple, labelsep=period,
+  labelfont={bf}, textfont=it, name=Figura, skip=0.4\baselineskip
+}
+\captionsetup[table]{
+  format=plain, labelformat=simple, labelsep=period,
+  labelfont={bf}, textfont=it, name=Tabela, skip=0.4\baselineskip,
+  position=above
+}
+
+% Nota de fonte abaixo de figuras e tabelas.
+% Para figuras, mantenha a fonte dentro do ambiente figure, imediatamente apos
+% \caption{}, para que grafico, legenda e fonte flutuem como um unico bloco.
+\newcommand{\fonte}[1]{%
+  \par\vspace{0.2\baselineskip}%
+  \small\textit{Fonte: #1}\par\vspace{0.8\baselineskip}%
+}
+
+% --- Tipografia e layout ------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage[all]{nowidow}
+
+\onehalfspacing
+
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titlespacing{\section}{0pt}{1.2\baselineskip}{0.6\baselineskip}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+\titlespacing{\subsection}{0pt}{1.0\baselineskip}{0.4\baselineskip}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{1em}{}
+\titlespacing{\subsubsection}{0pt}{0.8\baselineskip}{0.3\baselineskip}
+
+% --- Cabeçalho e rodapé -------------------------------------------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape \reporttitle}
+\fancyhead[R]{\small\itshape FGVcemif / FGV-EAESP}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{%
+  \color{black!25}\leaders\hrule height 0.4pt\hfill}}
+\fancyfoot[R]{\thepage}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{firstpage}{
+  \fancyhf{}
+  \fancyfoot[R]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- Hiperlinks ---------------------------------------------------------------
+\usepackage[unicode=true,colorlinks=true,
+  linkcolor=black!70,urlcolor=black!70,citecolor=black!70]{hyperref}
+
+% Campos a preencher — aparecem em vermelho no PDF gerado pelo template
+\newcommand{\placeholder}[1]{\textcolor{red!70!black}{\textbf{[#1]}}}
+
+% =============================================================================
+%   DADOS DO RELATÓRIO — editar a cada atualização mensal
+% =============================================================================
+
+\newcommand{\reporttitle}{Índice de Desconforto de Crédito}
+
+% Período de referência
+\newcommand{\mesreferencia}{\placeholder{mês por extenso de ano}}   % ex.: "fevereiro de 2026"
+\newcommand{\mesref}{\placeholder{mmm-AAAA}}                        % ex.: "fev-2026"
+\newcommand{\mesanterior}{\placeholder{mmm-AAAA}}                   % ex.: "jan-2026"
+\newcommand{\competencia}{\placeholder{AAAAMM}}                     % ex.: "202604"
+\newcommand{\mespublicacao}{\placeholder{mês de ano}}               % ex.: "abril de 2026"
+\newcommand{\proxdivulgacao}{\placeholder{mês de ano}}              % ex.: "maio de 2026"
+\newcommand{\mesproximo}{\placeholder{mmm-AAAA}}                    % ex.: "mar-2026"
+
+% Datas fixas da série (raramente mudam)
+\newcommand{\janelainicio}{jan-2014}   % início da janela exibida do IDC
+\newcommand{\seriesinicio}{mar-2011}   % início das séries brutas C, I, Q
+
+\newcommand{\reportsubtitle}{Nota Técnica de Atualização --- Competência \mesreferencia}
+\newcommand{\reportdate}{\placeholder{dia de mês de ano}}           % ex.: "29 de abril de 2026"
+
+% Autores
+\newcommand{\authorone}{Lauro Gonzalez}
+\newcommand{\authortwo}{Rafael Schiozer}
+\newcommand{\authorthree}{Matheus L. Carrijo}
+
+\hypersetup{
+  pdftitle={\reporttitle},
+  pdfauthor={\authorone; \authortwo; \authorthree},
+  pdfsubject={Nota Técnica de Atualização do IDC},
+  pdfkeywords={crédito, endividamento, Brasil, BCB, FGV}
+}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+% --- Capa ---------------------------------------------------------------------
+\begin{titlepage}
+  \noindent\hfill\includegraphics[width=79mm]{logo.png}
+
+  \vspace{18mm}
+
+  \begin{center}
+    {\LARGE\bfseries \reporttitle\par}
+    \vspace{3mm}
+    {\large\itshape \reportsubtitle\par}
+  \end{center}
+
+  \vspace{12mm}
+
+  \begin{flushright}
+    \large
+    \authorone\\[2pt]
+    \authortwo\\[2pt]
+    \authorthree
+  \end{flushright}
+
+  \vfill
+
+  \begin{center}
+    \reportdate
+  \end{center}
+\end{titlepage}
+\thispagestyle{firstpage}
+
+% =============================================================================
+%   CONTEÚDO — substitua os \placeholder{} pelo texto real do relatório
+% =============================================================================
+
+\section{Resumo}
+
+Com a publicação, em \mespublicacao, das Estatísticas Monetárias e de Crédito do
+Banco Central do Brasil (competência \competencia), o Índice de Desconforto
+de Crédito (IDC) foi recalculado e estendido até \mesreferencia{} --- último mês para
+o qual há observação disponível da série de comprometimento de renda das famílias (SGS~29034),
+que delimita o horizonte de cálculo do índice.
+
+\placeholder{Parágrafo de destaque: valor do IDC em \mesref, posição histórica e situação dos
+três componentes C, I e Q simultaneamente.}
+
+\section{Resultados de \mesreferencia}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Componentes brutos e valores normalizados do IDC --- \mesref.}
+  \label{tab:componentes}
+  \begin{tabular}{p{8.0cm}rr}
+    \toprule
+    Indicador & Valor bruto & Valor normalizado \\
+    \midrule
+    IDC (média dos componentes normalizados)
+      & ---
+      & \textbf{\placeholder{X,XXX}} \\
+    C --- Comprometimento de renda das famílias com a dívida
+      & \placeholder{XX,X}\%
+      & \placeholder{X,XXX} \\
+    I --- Inadimplência da carteira de crédito livre PF (90+ dias)
+      & \placeholder{X,X}\%
+      & \placeholder{X,XXX} \\
+    Q --- Participação das modalidades onerosas no crédito livre PF
+      & \placeholder{XX,X}\%
+      & \placeholder{X,XXX} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito,
+divulgação \competencia), elaboração própria.}
+
+Em relação à observação imediatamente anterior --- \textbf{\mesanterior}, quando o IDC
+marcava \textbf{\placeholder{X,XXX}} --- o índice \placeholder{subiu\slash{}caiu}
+\textbf{\placeholder{X,XXX}~ponto} em \mesref.
+\placeholder{Breve caracterização: variação disseminada ou concentrada nos componentes.}
+
+\begin{itemize}
+  \item Comprometimento de renda (C) passou de \textbf{\placeholder{XX,X}\%} para
+    \textbf{\placeholder{XX,X}\%} (\placeholder{$\pm$X,X}~p.p.).
+    \placeholder{Contextualização histórica e interpretação econômica.}
+
+  \item Inadimplência (I) \placeholder{avançou\slash{}recuou} de
+    \textbf{\placeholder{X,X}\%} para \textbf{\placeholder{X,X}\%}
+    (\placeholder{$\pm$X,X}~p.p.).
+    \placeholder{Contextualização histórica e interpretação econômica.}
+
+  \item Qualidade do crédito (Q) \placeholder{subiu\slash{}caiu} de
+    \textbf{\placeholder{XX,X}\%} para \textbf{\placeholder{XX,X}\%}
+    (\placeholder{$\pm$X,X}~p.p.).
+    \placeholder{Contextualização histórica e interpretação econômica.}
+\end{itemize}
+
+\placeholder{Parágrafo de síntese sobre o significado conjunto dos movimentos.
+Lembre: o IDC mede posição relativa, não endividamento absoluto.}
+
+\section{Trajetória do índice}
+
+A Figura~\ref{fig:indice} apresenta a evolução do IDC desde \janelainicio{} e situa a
+observação mais recente no histórico do índice. A Figura~\ref{fig:componentes} detalha
+as séries brutas de comprometimento de renda, inadimplência e qualidade do crédito,
+permitindo relacionar a leitura agregada do IDC aos movimentos observados em cada
+componente.
+
+\begin{figure}[htbp]
+  \centering
+  \IfFileExists{index.png}{%
+    \includegraphics[width=\linewidth]{index.png}%
+  }{%
+    \fbox{\rule{0pt}{6cm}\rule{\linewidth}{0pt}}%
+  }
+  \caption{Evolução do Índice de Desconforto de Crédito (\janelainicio{} a \mesref).}
+  \label{fig:indice}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \IfFileExists{components_raw.png}{%
+    \includegraphics[width=\linewidth]{components_raw.png}%
+  }{%
+    \fbox{\rule{0pt}{6cm}\rule{\linewidth}{0pt}}%
+  }
+  \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref).}
+  \label{fig:componentes}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
+
+\section{Próxima atualização}
+
+A próxima atualização do IDC está prevista para a divulgação seguinte das Estatísticas
+Monetárias e de Crédito do Banco Central, esperada para \proxdivulgacao.
+O índice será estendido para \mesproximo{} caso a série de comprometimento de renda das
+famílias (SGS~29034) avance para essa competência.
+
+\section*{Notas}
+
+Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir de
+três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
+comprometimento de renda das famílias com o serviço da dívida (SGS~29034), inadimplência
+da carteira de crédito livre PF --- atrasos superiores a 90 dias (SGS~21112) --- e
+participação das modalidades onerosas (cheque especial, SGS~20573; crédito pessoal não
+consignado, SGS~20574; cartão de crédito rotativo, SGS~20587; cartão de crédito parcelado,
+SGS~20588) no total do crédito livre para pessoa física (SGS~20570). Cada componente é
+normalizado pelo método min-max com janela expansiva, a partir de \seriesinicio; o índice
+é exibido a partir de \janelainicio, após o período de aquecimento da janela, e corresponde
+à média simples dos três componentes normalizados, contido no intervalo [0,~1]. Por
+construção, o IDC mede a posição relativa do mês corrente em relação ao histórico observado
+pelo índice. O relatório de divulgação está disponível em
+\url{https://eaesp.fgv.br/producao-intelectual/indice-desconforto-credito-idc}.
+
+Citação recomendada. Gonzalez, L.; Schiozer, R.; Carrijo, M.~L.
+\textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.
+
+\end{document}
