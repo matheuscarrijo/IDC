@@ -4,24 +4,24 @@ Autores: Lauro Gonzalez, Rafael Schiozer, Matheus L. Carrijo
 
 Este repositório contém o código e a documentação para a construção de um **índice** que captura o nível de desconforto de crédito das famílias brasileiras.
 
-## Atualização maio/2026 — competência mar/2026
+## Atualização junho/2026 — competência abr/2026
 
 **O IDC mostra quão perto o desconforto de crédito das famílias está do pior nível já observado no histórico disponível.**
 
 
-Com a divulgação em **maio de 2026** das estatísticas monetárias e de crédito do Banco Central, o último mês calculável do IDC é **mar-2026**, pois a série de comprometimento de renda está disponível somente até esse mês.
+Com a divulgação em **junho de 2026** das estatísticas monetárias e de crédito do Banco Central, o último mês calculável do IDC é **abr-2026**, pois a série de comprometimento de renda está disponível somente até esse mês.
 
 <!-- IDC_LATEST_START -->
 | Indicador | Valor bruto | Valor normalizado |
 |---|---:|---:|
-| IDC | — | **0,954** |
-| C — comprometimento de renda | 29,3% | 0,968 |
-| I — inadimplência 90+ dias | 7,0% | 0,938 |
-| Q — crédito oneroso no crédito livre PF | 24,8% | 0,955 |
+| IDC | — | **0,986** |
+| C — comprometimento de renda | 28,2% | 0,988 |
+| I — inadimplência 90+ dias | 7,4% | 1,000 |
+| Q — crédito oneroso no crédito livre PF | 25,0% | 0,971 |
 <!-- IDC_LATEST_END -->
 
 
-O valor **0,954** indica que, em mar-2026, o desconforto de crédito permaneceu muito próximo do ponto máximo da janela histórica observada pelo índice. Em relação a fev-2026, quando o IDC marcou **1,000**, houve recuo simultâneo dos três componentes, embora comprometimento de renda, inadimplência e composição do crédito continuem em patamar relativo elevado na amostra.
+O valor **0,986** indica que, em abr-2026, o desconforto de crédito permaneceu muito próximo do ponto máximo da janela histórica observada pelo índice. Em relação a mar-2026, quando o IDC marcou **0,960**, houve alta do índice, concentrada no avanço da inadimplência e da participação das modalidades onerosas, enquanto o comprometimento de renda permaneceu estável em patamar elevado na amostra.
 
 É importante destacar que o IDC não é uma medida absoluta de endividamento; ele indica a posição do mês corrente em relação ao histórico disponível.
 
@@ -30,11 +30,11 @@ O valor **0,954** indica que, em mar-2026, o desconforto de crédito permaneceu 
 <!-- IDC_STATS_START -->
 | Estatística | Valor |
 |---|---:|
-| Último dado | mar-2026 |
-| Atual | 0,954 |
-| Média | 0,505 |
-| Desvio padrão | 0,286 |
-| Mínimo | 0,012 |
+| Último dado | abr-2026 |
+| Atual | 0,986 |
+| Média | 0,516 |
+| Desvio padrão | 0,290 |
+| Mínimo | 0,013 |
 | Máximo | 1,000 |
 <!-- IDC_STATS_END -->
 
@@ -136,7 +136,7 @@ onde:
 
 O horizonte efetivo do índice é determinado pela série mais curta disponível na planilha mensal do Banco Central — em geral, a SGS 29034 (comprometimento de renda), que é publicada com maior defasagem que as demais. A planilha pode conter observações mais recentes para algumas séries, mas o índice usa apenas os meses em que os três componentes C, I e Q estão disponíveis. O índice é exibido a partir de **jan-2014**, após ~34 meses de aquecimento da janela expansiva.
 
-Assim, a competência da divulgação do Banco Central não necessariamente coincide com o último mês calculável do IDC. Por exemplo, a divulgação **202605** traz a série de comprometimento de renda até **mar-2026** e as demais séries usadas no índice até **abr-2026**; como o IDC exige todos os componentes no mesmo mês, o índice calculado com essa divulgação termina em **mar-2026**.
+Assim, a competência da divulgação do Banco Central não necessariamente coincide com o último mês calculável do IDC. Por exemplo, a divulgação **202606** traz a série de comprometimento de renda até **abr-2026** e as demais séries usadas no índice até **mai-2026**; como o IDC exige todos os componentes no mesmo mês, o índice calculado com essa divulgação termina em **abr-2026**.
 
 ## 5. Como Reproduzir
 
@@ -149,10 +149,10 @@ pip install -r requirements.txt
 **Atualização mensal dos dados do Banco Central** a partir do diretório raiz do projeto:
 
 ```bash
-python -m src.download_bcb_release 202605
+python -m src.download_bcb_release 202606
 ```
 
-O comando acima baixa a tabela XLSX e o PDF do relatório mensal do Banco Central para `data/raw/202605/`. Por padrão, arquivos existentes não são sobrescritos; use `--overwrite` para forçar novo download.
+O comando acima baixa a tabela XLSX e o PDF do relatório mensal do Banco Central para `data/raw/202606/`. Por padrão, arquivos existentes não são sobrescritos; use `--overwrite` para forçar novo download.
 
 **Execução do índice** a partir do diretório raiz do projeto:
 
@@ -170,9 +170,9 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 │   │   ├── 202603/
 │   │   │   ├── 202603_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
 │   │   │   └── 202603_Texto_de_estatisticas_monetarias_e_de_credito.pdf
-│   │   └── 202605/
-│   │       ├── 202605_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
-│   │       └── 202605_Texto_de_estatisticas_monetarias_e_de_credito.pdf
+│   │   └── 202606/
+│   │       ├── 202606_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
+│   │       └── 202606_Texto_de_estatisticas_monetarias_e_de_credito.pdf
 │   └── processed/
 │       ├── series_raw.csv
 │       ├── components_raw.csv
@@ -237,7 +237,7 @@ python -m src.download_bcb_release YYYYMM
 - Reúne, em uma única planilha, as principais séries necessárias para o índice.
 - As observações mais recentes são marcadas com `*` na planilha, indicando **dados preliminares** sujeitos a revisão. Essas observações são incluídas no índice sem tratamento especial.
 
-**Identificação das séries dentro da planilha:** em cada aba, a **linha 7** contém o cabeçalho `SGS` com o número identificador de cada série no sistema SGS/BCB. Exemplo: a série **29034** está na célula **D7** da aba **`Tab 27`**.
+**Identificação das séries dentro da planilha:** em cada aba, uma linha de cabeçalho `SGS` contém o número identificador de cada série no sistema SGS/BCB. A posição dessa linha pode variar entre divulgações; o carregador localiza dinamicamente esse cabeçalho antes de ler as observações.
 
 ---
 

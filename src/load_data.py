@@ -31,14 +31,21 @@ def _is_pt_date(val) -> bool:
 
 def _read_series(wb, sheet_name: str, sgs_code: int) -> pd.Series:
     ws = wb[sheet_name]
-    rows = list(ws.iter_rows(min_row=7, values_only=True))
+    rows = list(ws.iter_rows(values_only=True))
 
-    col_idx = next((i for i, v in enumerate(rows[0]) if v == sgs_code), None)
+    header_idx = next(
+        (i for i, row in enumerate(rows) if str(row[0]).strip().upper() == "SGS"),
+        None,
+    )
+    if header_idx is None:
+        raise ValueError(f"SGS header row not found in sheet '{sheet_name}'")
+
+    col_idx = next((i for i, v in enumerate(rows[header_idx]) if v == sgs_code), None)
     if col_idx is None:
         raise ValueError(f"SGS {sgs_code} not found in sheet '{sheet_name}'")
 
     data = {}
-    for row in rows[1:]:
+    for row in rows[header_idx + 1:]:
         if not _is_pt_date(row[0]):
             continue
         try:
