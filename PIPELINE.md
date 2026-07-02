@@ -4,7 +4,7 @@ This document is written for automated agents executing the IDC monthly update. 
 
 ## When to run
 
-**Last calendar day of every month.** The Banco Central do Brasil (BCB) publishes the monthly *Estatísticas Monetárias e de Crédito* release sometime during the last week of the month. Running on the last day maximises the probability that the release is already available.
+**Last calendar day of every month, with retries in the first days of the next month.** The Banco Central do Brasil (BCB) usually publishes the monthly *Estatísticas Monetárias e de Crédito* release during the last week of the nominal release month, but publication can slip into the first days of the following month. The automation must therefore handle both the current nominal release and the previous nominal release when it runs early in a month.
 
 ## What the pipeline does
 
@@ -19,18 +19,29 @@ This document is written for automated agents executing the IDC monthly update. 
 
 ## Release period
 
-The BCB names each release by the **calendar month it is published**, not the month the data refers to (there is typically a ~2-month data lag). The period argument is always **the current month** in `YYYYMM` format.
+The BCB filenames use the **nominal release month**, not necessarily the actual calendar day when the files become available and not the month the IDC data refers to (there is typically a ~2-month data lag). Most runs late in month `t` should use period `t` in `YYYYMM` format. Runs in the first days of month `t+1` must first check whether the nominal release for month `t` is still missing locally and has become available.
 
 Examples:
 - Running on 2026-05-31 → period `202605`
 - Running on 2026-06-30 → period `202606`
+- Running on 2026-07-02, if `data/raw/202606/202606_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx` is missing → try period `202606` before `202607`
 
-To compute it programmatically:
+To compute candidate periods programmatically:
 
 ```python
 from datetime import date
-period = date.today().strftime("%Y%m")   # e.g. "202605"
+
+today = date.today()
+current = today.strftime("%Y%m")
+previous_month_year = today.year if today.month > 1 else today.year - 1
+previous_month = today.month - 1 if today.month > 1 else 12
+previous = f"{previous_month_year}{previous_month:02d}"
+
+# BCB may publish the nominal month-t release in the first days of month t+1.
+candidates = [previous, current] if today.day <= 7 else [current]
 ```
+
+For each candidate, first check whether its release XLSX already exists under `data/raw/PERIOD/`. If it exists, that release is already present and the automation should move to the next candidate; if every candidate is already present, stop and report that no new release is pending. If a candidate is missing locally, attempt to download it. The selected `PERIOD` for the rest of the pipeline is the first candidate that downloads successfully.
 
 ## Python environment
 
@@ -51,11 +62,27 @@ The `.venv` directory is in `.gitignore` and will not be committed.
 
 All commands must be run from the repository root (`/Users/matheuslopescarrijo/Documents/Git/IDC`).
 
-### 1. Set the release period
+### 1. Select the release period
 
 ```bash
-PERIOD=$(python3 -c "from datetime import date; print(date.today().strftime('%Y%m'))")
-echo "Release period: $PERIOD"
+PERIOD_CANDIDATES_FILE=$(mktemp)
+trap 'rm -f "$PERIOD_CANDIDATES_FILE"' EXIT
+python3 - <<'PY' > "$PERIOD_CANDIDATES_FILE"
+from datetime import date
+
+today = date.today()
+current = today.strftime("%Y%m")
+if today.month == 1:
+    previous = f"{today.year - 1}12"
+else:
+    previous = f"{today.year}{today.month - 1:02d}"
+
+candidates = [previous, current] if today.day <= 7 else [current]
+for period in candidates:
+    print(period)
+PY
+printf 'Release period candidates:\n'
+cat "$PERIOD_CANDIDATES_FILE"
 ```
 
 ### 2. Ensure the Python environment exists
@@ -71,14 +98,44 @@ source .venv/bin/activate
 ### 3. Download the BCB release
 
 ```bash
-python3 -m src.download_bcb_release "$PERIOD"
+PERIOD=""
+while IFS= read -r CANDIDATE; do
+    TABLE="data/raw/${CANDIDATE}/${CANDIDATE}_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx"
+    if [ -f "$TABLE" ]; then
+        echo "Release already present, skipping candidate: $CANDIDATE"
+        continue
+    fi
+
+    DOWNLOAD_LOG=$(mktemp)
+    if python3 -m src.download_bcb_release "$CANDIDATE" 2>&1 | tee "$DOWNLOAD_LOG"; then
+        rm -f "$DOWNLOAD_LOG"
+        PERIOD="$CANDIDATE"
+        break
+    fi
+
+    if ! grep -q "HTTP 404" "$DOWNLOAD_LOG"; then
+        rm -f "$DOWNLOAD_LOG"
+        echo "Download failed for a reason other than HTTP 404; aborting."
+        exit 1
+    fi
+
+    rm -f "$DOWNLOAD_LOG"
+    echo "Release candidate not available yet: $CANDIDATE"
+done < "$PERIOD_CANDIDATES_FILE"
+
+if [ -z "$PERIOD" ]; then
+    echo "No new BCB release was downloaded for the candidate periods."
+    exit 0
+fi
+
+echo "Selected release period: $PERIOD"
 ```
 
 This downloads two files into `data/raw/$PERIOD/`:
 - `${PERIOD}_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx`
 - `${PERIOD}_Texto_de_estatisticas_monetarias_e_de_credito.pdf`
 
-**If the download fails with HTTP 404:** the BCB has not yet published this month's release. Do not proceed. Retry in 24 hours or check manually at `https://www.bcb.gov.br/estatisticas/estatisticasmonetariascredito`.
+**If a download fails with HTTP 404:** the BCB has not yet published that nominal release candidate. Continue to the next candidate, if any. If all missing candidates fail with HTTP 404, do not proceed; report that no pending BCB release is available yet and retry on the next scheduled run or check manually at `https://www.bcb.gov.br/estatisticas/estatisticasmonetariascredito`.
 
 **If files already exist** (re-run scenario): the script skips them by default. Add `--overwrite` to force re-download.
 
@@ -291,7 +348,7 @@ IDC/
 
 | Symptom | Likely cause | Action |
 |---|---|---|
-| HTTP 404 on download | BCB release not yet published | Abort; retry next day |
+| HTTP 404 on download | BCB release candidate not yet published | Try the next candidate; if all candidates fail with 404, abort and retry next scheduled run |
 | `ModuleNotFoundError: No module named 'pandas'` | `.venv` missing or not activated | Run `uv venv && uv pip install -r requirements.txt` |
 | `RuntimeError: Bloco automático do IDC não encontrado no README.md` | README markers were accidentally removed | Restore `<!-- IDC_LATEST_START -->` / `<!-- IDC_LATEST_END -->` and `<!-- IDC_STATS_START -->` / `<!-- IDC_STATS_END -->` markers in README.md |
 | Index value unchanged from prior month | New XLSX may contain same data (BCB sometimes re-publishes) | Compare `data/raw/PERIOD/` file size against prior period; flag for human review |
