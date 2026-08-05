@@ -1,8 +1,8 @@
 # Template LaTeX — Índice de Desconforto de Crédito (IDC)
 
-Este é o equivalente em LaTeX do template original `template-docx/template.docx`.
+Este é o template mestre do relatório mensal. O espelho Word editável em `../template-docx/template.docx` é gerado diretamente deste `template.tex` por `src.build_report_docx`, de modo que os formatos não sejam mantidos manualmente em paralelo.
 
-O objetivo é produzir saída visual **o mais próxima possível** do documento Word gerado a partir do template DOCX, especialmente:
+O objetivo é produzir a saída PDF de referência e, a partir da mesma fonte preenchida, uma saída Word editável com o mesmo conteúdo e a mesma identidade visual, especialmente:
 
 - Página A4 com margens idênticas
 - Primeira página (capa) com logo no canto superior direito, título e autores alinhados à direita
@@ -68,6 +68,18 @@ O PDF de saída é `template.pdf`.
 
 5. Compile duas vezes.
 
+6. Na raiz do repositório, gere o DOCX editável da fonte já preenchida:
+
+   ```bash
+   python -m src.build_report_docx \
+     outputs/report/update-YYYYMM/idc-update-YYYYMM.tex \
+     outputs/report/update-YYYYMM/idc-update-YYYYMM.docx \
+     --assets-dir outputs/report/update-YYYYMM \
+     --require-filled
+   ```
+
+7. Renderize e inspecione todas as páginas do PDF e do DOCX conforme `PIPELINE.md`. Se o LaTeX mudar, recompile o PDF e regenere o DOCX.
+
 ## Personalização de fontes (fidelidade máxima)
 
 O template usa **TeX Gyre Pagella** (corpo) e **TeX Gyre Heros** (títulos) — clones de alta qualidade de Palatino e Helvetica, muito próximos de Cambria e Calibri.
@@ -81,19 +93,31 @@ Se você tem o Microsoft Office instalado e deseja usar as fontes originais do t
 
 e comente as linhas de TeX Gyre.
 
-## Diferenças intencionais em relação ao DOCX
+## Relação com o template DOCX
 
-- Cabeçalho e rodapé nas páginas internas (o DOCX original exportado do Google Docs tinha headers/footers praticamente vazios).
-- Espaçamento 1,5 (ajustável via `\onehalfspacing` / `\singlespacing`).
-- Numeração de páginas e linhas de separação visuais (melhoria de usabilidade sem alterar a identidade visual da primeira página).
+O LaTeX é a autoridade de conteúdo e design. O conversor Word reproduz em elementos editáveis a página A4, a capa, os cabeçalhos e rodapés internos, a hierarquia de títulos, o espaçamento, a tabela em estilo `booktabs`, as listas, as figuras, as legendas e as notas de fonte.
 
-Se você precisar de **reprodução pixel-perfect** da primeira página sem nenhum elemento extra, remova o bloco `\usepackage{fancyhdr}` e o `\pagestyle`.
+As figuras não dependem da decisão automática de floats. O corpo principal contém somente a narrativa, a tabela e as notas; depois dele, `Anexo de figuras` reúne exatamente uma figura por página. Ambas usam a largura integral do texto; se um gráfico for alto demais, corrija a proporção do PNG na geração da figura em vez de reduzi-lo até ficar ilegível. O DOCX aplica a mesma política com quebras de página explícitas e controles `keep-with-next`/`keep-together` do Word.
+
+O gráfico `index.png` é gerado em formato aproximadamente quadrado. Isso aproveita a altura da primeira página do anexo sem ampliar fontes artificialmente nem distorcer a série.
+
+LuaLaTeX e Word usam mecanismos de composição diferentes, portanto pequenas diferenças de quebra de linha são aceitáveis. O critério de aprovação é: conteúdo idêntico, organização equivalente de páginas, elementos plenamente editáveis e ausência de defeitos visuais após renderização.
+
+Para regenerar o template Word após alterar este arquivo:
+
+```bash
+python -m src.build_report_docx \
+  outputs/report/template-latex/template.tex \
+  outputs/report/template-docx/template.docx \
+  --assets-dir outputs/report/template-latex
+```
 
 ## Estrutura recomendada para releases mensais
 
 ```
 outputs/report/update-202605/
 ├── idc-update-202605.tex          (copiado de template.tex + preenchido)
+├── idc-update-202605.docx         (gerado do .tex preenchido; editável)
 ├── logo.png                       (copiado)
 ├── components_raw.png
 ├── index.png

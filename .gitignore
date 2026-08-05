@@ -5,7 +5,10 @@ outputs/report/template-latex/*
 !outputs/report/template-latex/README.md
 !outputs/report/template-latex/template.tex
 !outputs/report/template-latex/logo.png
-outputs/report/template-docx/
+outputs/report/template-docx/*
+!outputs/report/template-docx/
+!outputs/report/template-docx/README.md
+!outputs/report/template-docx/template.docx
 outputs/report/release/
 outputs/report/update-*/
 
