@@ -4,7 +4,7 @@ This document is written for automated agents executing the IDC monthly update. 
 
 ## When to run
 
-**Last calendar day of every month, with retries in the first days of the next month.** The Banco Central do Brasil (BCB) usually publishes the monthly *Estatísticas Monetárias e de Crédito* release during the last week of the nominal release month, but publication can slip into the first days of the following month. The automation must therefore handle both the current nominal release and the previous nominal release when it runs early in a month.
+**Days 27–31 of each month, with retries on days 1–7 of the next month.** The Banco Central do Brasil (BCB) usually publishes the monthly *Estatísticas Monetárias e de Crédito* release during the last week of the nominal release month, but publication can slip into the first days of the following month. Late-month runs use the current nominal month; early-month retries continue using only the previous nominal month.
 
 ## What the pipeline does
 
@@ -13,7 +13,7 @@ This document is written for automated agents executing the IDC monthly update. 
 3. Saves processed CSVs and a consolidated Excel workbook to `data/processed/`.
 4. Regenerates the six PNG figures in `outputs/figures/`.
 5. Updates the two auto-managed tables and the latest-release narrative in `README.md`.
-6. **Generates the monthly update report** as matching `.tex`, `.pdf`, and editable `.docx` files in `outputs/report/update-YYYYMM/` (see [Report generation](#report-generation)).
+6. **Generates the monthly update report** as matching `.tex`, `.pdf`, and editable `.docx` files in `outputs/report/update-YYYYMM/` (see [Report generation](#5-generate-the-monthly-report)).
 7. Runs PDF and DOCX content/style/layout reviews and fixes any issues before committing.
 8. Creates a git commit with all changed files.
 
@@ -26,7 +26,7 @@ Examples:
 - Running on 2026-06-30 → period `202606`
 - Running on 2026-07-02 → period `202606`; stop if that release already exists
 
-To compute candidate periods programmatically:
+To compute the scheduled period programmatically:
 
 ```python
 from datetime import date
@@ -38,7 +38,7 @@ previous_month = today.month - 1 if today.month > 1 else 12
 previous = f"{previous_month_year}{previous_month:02d}"
 
 # BCB may publish the nominal month-t release in the first days of month t+1.
-candidates = [previous] if today.day <= 7 else [current]
+period = previous if today.day <= 7 else current
 ```
 
 First check whether the release XLSX already exists under `data/raw/PERIOD/`. If it exists, stop and report that the release cycle has already succeeded. If it is missing locally, attempt to download it; an HTTP 404 means the same period should be retried on the next scheduled date.
@@ -63,9 +63,7 @@ All commands must be run from the repository root (`/Users/matheuslopescarrijo/D
 ### 1. Select the release period
 
 ```bash
-PERIOD_CANDIDATES_FILE=$(mktemp)
-trap 'rm -f "$PERIOD_CANDIDATES_FILE"' EXIT
-python3 - <<'PY' > "$PERIOD_CANDIDATES_FILE"
+PERIOD=$(python3 - <<'PY'
 from datetime import date
 
 today = date.today()
@@ -75,12 +73,10 @@ if today.month == 1:
 else:
     previous = f"{today.year}{today.month - 1:02d}"
 
-candidates = [previous] if today.day <= 7 else [current]
-for period in candidates:
-    print(period)
+print(previous if today.day <= 7 else current)
 PY
-printf 'Release period candidates:\n'
-cat "$PERIOD_CANDIDATES_FILE"
+)
+printf 'Scheduled release period: %s\n' "$PERIOD"
 ```
 
 ### 2. Ensure the Python environment exists
@@ -96,49 +92,38 @@ source .venv/bin/activate
 ### 3. Download the BCB release
 
 ```bash
-PERIOD=""
-while IFS= read -r CANDIDATE; do
-    TABLE="data/raw/${CANDIDATE}/${CANDIDATE}_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx"
-    if [ -f "$TABLE" ]; then
-        echo "Release cycle already completed: $CANDIDATE"
-        exit 0
-    fi
-
-    DOWNLOAD_LOG=$(mktemp)
-    if python3 -m src.download_bcb_release "$CANDIDATE" 2>&1 | tee "$DOWNLOAD_LOG"; then
-        rm -f "$DOWNLOAD_LOG"
-        PERIOD="$CANDIDATE"
-        break
-    fi
-
-    if ! grep -q "HTTP 404" "$DOWNLOAD_LOG"; then
-        echo "Direct BCB download failed; trying the GitHub Actions bridge."
-        if ! gh auth status >/dev/null 2>&1; then
-            rm -f "$DOWNLOAD_LOG"
-            echo "Direct download failed and gh is not authenticated; aborting."
-            exit 1
-        fi
-
-        if python3 -m src.download_bcb_via_github "$CANDIDATE" 2>&1 | tee -a "$DOWNLOAD_LOG"; then
-            rm -f "$DOWNLOAD_LOG"
-            PERIOD="$CANDIDATE"
-            break
-        fi
-
-        if ! grep -q "HTTP 404" "$DOWNLOAD_LOG"; then
-            rm -f "$DOWNLOAD_LOG"
-            echo "Both direct and GitHub Actions downloads failed for a non-404 reason."
-            exit 1
-        fi
-    fi
-
-    rm -f "$DOWNLOAD_LOG"
-    echo "Release not available yet: $CANDIDATE"
-done < "$PERIOD_CANDIDATES_FILE"
-
-if [ -z "$PERIOD" ]; then
-    echo "The scheduled release was not downloaded."
+TABLE="data/raw/${PERIOD}/${PERIOD}_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx"
+if [ -f "$TABLE" ]; then
+    echo "Release cycle already completed: $PERIOD"
     exit 0
+fi
+
+DOWNLOAD_LOG=$(mktemp)
+if python3 -m src.download_bcb_release "$PERIOD" 2>&1 | tee "$DOWNLOAD_LOG"; then
+    rm -f "$DOWNLOAD_LOG"
+elif grep -q "HTTP 404" "$DOWNLOAD_LOG"; then
+    rm -f "$DOWNLOAD_LOG"
+    echo "Release not available yet: $PERIOD"
+    exit 0
+else
+    echo "Direct BCB download failed; trying the GitHub Actions bridge."
+    if ! gh auth status >/dev/null 2>&1; then
+        rm -f "$DOWNLOAD_LOG"
+        echo "Direct download failed and gh is not authenticated; aborting."
+        exit 1
+    fi
+
+    if python3 -m src.download_bcb_via_github "$PERIOD" 2>&1 | tee -a "$DOWNLOAD_LOG"; then
+        rm -f "$DOWNLOAD_LOG"
+    elif grep -q "HTTP 404" "$DOWNLOAD_LOG"; then
+        rm -f "$DOWNLOAD_LOG"
+        echo "Release not available yet: $PERIOD"
+        exit 0
+    else
+        rm -f "$DOWNLOAD_LOG"
+        echo "Both direct and GitHub Actions downloads failed for a non-404 reason."
+        exit 1
+    fi
 fi
 
 echo "Selected release period: $PERIOD"
@@ -402,7 +387,7 @@ IDC/
 
 | Symptom | Likely cause | Action |
 |---|---|---|
-| HTTP 404 on download | BCB release candidate not yet published | Try the next candidate; if all candidates fail with 404, abort and retry next scheduled run |
+| HTTP 404 on download | Scheduled BCB release not yet published | Stop without modifying files and retry the same period on the next scheduled run |
 | DNS or socket failure reaching BCB | Local runner has no outbound access | If `gh auth status` succeeds, run `python3 -m src.download_bcb_via_github PERIOD`; otherwise report the infrastructure blocker |
 | `ModuleNotFoundError: No module named 'pandas'` | `.venv` missing or not activated | Run `uv venv && uv pip install -r requirements.txt` |
 | `ModuleNotFoundError: No module named 'docx'` | Updated requirements were not installed | Run `uv pip install -r requirements.txt` in the active environment |
