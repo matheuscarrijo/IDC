@@ -662,6 +662,8 @@ def _plot_raw_component_panel(
     candidate_overrides: Optional[dict] = None,
 ) -> None:
     ax.plot(series.index, series.values, color=COMP_COLORS[comp])
+    # Preserve enough horizontal room for endpoint labels as the series grows.
+    ax.margins(x=0.08)
     ymin, ymax = series.min(), series.max()
     rng = ymax - ymin
     _style_ax(
