@@ -46,6 +46,7 @@
 \usepackage{array}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{float}
 
 \captionsetup[figure]{
   format=plain, labelformat=simple, labelsep=period,
@@ -59,7 +60,8 @@
 
 % Nota de fonte abaixo de figuras e tabelas.
 % Para figuras, mantenha a fonte dentro do ambiente figure, imediatamente apos
-% \caption{}, para que grafico, legenda e fonte flutuem como um unico bloco.
+% \caption{}. No anexo, [H] mantém gráfico, legenda e fonte como um bloco fixo,
+% sempre em largura integral e com exatamente uma figura por página.
 \newcommand{\fonte}[1]{%
   \par\vspace{0.2\baselineskip}%
   \small\textit{Fonte: #1}\par\vspace{0.8\baselineskip}%
@@ -254,33 +256,6 @@ observação mais recente no histórico do índice. A Figura~\ref{fig:componente
 as séries brutas de comprometimento de renda, inadimplência e qualidade do crédito,
 permitindo relacionar a leitura agregada do IDC aos movimentos observados em cada
 componente.
-
-\begin{figure}[htbp]
-  \centering
-  \IfFileExists{index.png}{%
-    \includegraphics[width=\linewidth]{index.png}%
-  }{%
-    \fbox{\rule{0pt}{6cm}\rule{\linewidth}{0pt}}%
-  }
-  \caption{Evolução do Índice de Desconforto de Crédito (\janelainicio{} a \mesref).}
-  \label{fig:indice}
-  \fonte{BCB, elaboração própria.}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \IfFileExists{components_raw.png}{%
-    \includegraphics[width=\linewidth]{components_raw.png}%
-  }{%
-    \fbox{\rule{0pt}{6cm}\rule{\linewidth}{0pt}}%
-  }
-  \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref).}
-  \label{fig:componentes}
-  \fonte{BCB, elaboração própria.}
-\end{figure}
-
-\clearpage
-
 \section{Próxima atualização}
 
 A próxima atualização do IDC está prevista para a divulgação seguinte das Estatísticas
@@ -306,5 +281,37 @@ pelo índice. O relatório de divulgação está disponível em
 
 Citação recomendada. Gonzalez, L.; Schiozer, R.; Carrijo, M.~L.
 \textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.
+
+% As figuras ficam em um anexo próprio, uma por página. Assim, nenhuma figura
+% disputa espaço com o corpo textual ou precisa ser reduzida para caber.
+\clearpage
+\section*{Anexo de figuras}
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{index.png}{%
+    \includegraphics[width=\linewidth]{index.png}%
+  }{%
+    \fbox{\rule{0pt}{14cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução do Índice de Desconforto de Crédito (\janelainicio{} a \mesref).}
+  \label{fig:indice}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
+
+\clearpage
+\begin{figure}[H]
+  \centering
+  \IfFileExists{components_raw.png}{%
+    \includegraphics[width=\linewidth]{components_raw.png}%
+  }{%
+    \fbox{\rule{0pt}{17cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref).}
+  \label{fig:componentes}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
 
 \end{document}

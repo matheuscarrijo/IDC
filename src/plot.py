@@ -936,7 +936,9 @@ def _plot_components_normalized(index_df: pd.DataFrame) -> None:
 
 
 def _plot_index(index_df: pd.DataFrame) -> None:
-    fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_H))
+    # Figure 1 has its own full-width annex page. A square source uses the page
+    # vertically without changing fonts, the 150 mm width, or the data scale.
+    fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_W))
 
     ax.plot(
         index_df.index, index_df["index"],

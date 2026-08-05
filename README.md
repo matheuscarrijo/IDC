@@ -170,6 +170,18 @@ python main.py
 
 O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, constrói os três componentes e o índice (normalização min-max com janela expansiva), salva os CSVs em `data/processed/` e as figuras em `outputs/figures/`. O relatório final do projeto fica em `outputs/report/`.
 
+Cada nota mensal é publicada em três formatos com o mesmo conteúdo: fonte LaTeX (`.tex`), PDF compilado (`.pdf`) e documento Word editável (`.docx`). Depois de preencher e revisar o LaTeX, gere o DOCX diretamente da mesma fonte para evitar versões divergentes:
+
+```bash
+python -m src.build_report_docx \
+  outputs/report/update-202607/idc-update-202607.tex \
+  outputs/report/update-202607/idc-update-202607.docx \
+  --assets-dir outputs/report/update-202607 \
+  --require-filled
+```
+
+O processo mensal completo, inclusive a compilação e a revisão visual dos dois formatos, está documentado em [`PIPELINE.md`](PIPELINE.md).
+
 ## 6. Estrutura do Repositório
 
 ```
@@ -186,6 +198,7 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 │       ├── components_raw.csv
 │       └── index.csv
 ├── src/
+│   ├── build_report_docx.py      # converte o relatório LaTeX preenchido em DOCX editável
 │   ├── download_bcb_release.py   # baixa a divulgação mensal do BCB (XLSX + PDF)
 │   ├── download_bcb_via_github.py # fallback de download por GitHub Actions
 │   ├── load_data.py     # carrega as séries do Excel
@@ -194,7 +207,7 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 │   └── plot.py          # gera as figuras
 ├── outputs/
 │   ├── figures/         # 6 figuras (PNG)
-│   └── report/          # relatório final (não versionado)
+│   └── report/          # templates e relatórios mensais em TEX, PDF e DOCX
 ├── main.py              # ponto de entrada
 ├── CITATION.cff         # autoria e citação recomendada
 ├── LICENSE              # licença MIT para o código-fonte
@@ -226,6 +239,8 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 
 - **`update-202607/idc-update-202607.tex`** — fonte LaTeX preenchida da nota mensal.
 - **`update-202607/idc-update-202607.pdf`** — nota mensal compilada e verificada.
+- **`update-202607/idc-update-202607.docx`** — versão Word editável, gerada da fonte LaTeX e verificada por renderização.
+- **`template-docx/template.docx`** — espelho Word editável do template LaTeX, regenerado por `src.build_report_docx`.
 
 ## 8. Estrutura e Fontes de Dados
 
