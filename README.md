@@ -154,6 +154,14 @@ python -m src.download_bcb_release 202605
 
 O comando acima baixa a tabela XLSX e o PDF do relatório mensal do Banco Central para `data/raw/202605/`. Por padrão, arquivos existentes não são sobrescritos; use `--overwrite` para forçar novo download.
 
+Se o ambiente local não conseguir alcançar o site do BCB por uma falha de rede que não seja HTTP 404, o mesmo arquivo oficial pode ser obtido por um runner do GitHub Actions:
+
+```bash
+python -m src.download_bcb_via_github 202605
+```
+
+Esse fallback requer `gh auth status` válido e o workflow `fetch-bcb-release.yml` disponível na branch `main`. O runner baixa os arquivos do BCB, valida as assinaturas XLSX/PDF e os devolve como artefato antes de a execução local do índice continuar.
+
 **Execução do índice** a partir do diretório raiz do projeto:
 
 ```bash
@@ -179,6 +187,7 @@ O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, 
 │       └── index.csv
 ├── src/
 │   ├── download_bcb_release.py   # baixa a divulgação mensal do BCB (XLSX + PDF)
+│   ├── download_bcb_via_github.py # fallback de download por GitHub Actions
 │   ├── load_data.py     # carrega as séries do Excel
 │   ├── normalize.py     # normalização min-max com janela expansiva
 │   ├── build_index.py   # constrói componentes C, I, Q e agrega o índice

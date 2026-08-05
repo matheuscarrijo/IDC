@@ -114,9 +114,24 @@ while IFS= read -r CANDIDATE; do
     fi
 
     if ! grep -q "HTTP 404" "$DOWNLOAD_LOG"; then
-        rm -f "$DOWNLOAD_LOG"
-        echo "Download failed for a reason other than HTTP 404; aborting."
-        exit 1
+        echo "Direct BCB download failed; trying the GitHub Actions bridge."
+        if ! gh auth status >/dev/null 2>&1; then
+            rm -f "$DOWNLOAD_LOG"
+            echo "Direct download failed and gh is not authenticated; aborting."
+            exit 1
+        fi
+
+        if python3 -m src.download_bcb_via_github "$CANDIDATE" 2>&1 | tee -a "$DOWNLOAD_LOG"; then
+            rm -f "$DOWNLOAD_LOG"
+            PERIOD="$CANDIDATE"
+            break
+        fi
+
+        if ! grep -q "HTTP 404" "$DOWNLOAD_LOG"; then
+            rm -f "$DOWNLOAD_LOG"
+            echo "Both direct and GitHub Actions downloads failed for a non-404 reason."
+            exit 1
+        fi
     fi
 
     rm -f "$DOWNLOAD_LOG"
@@ -136,6 +151,8 @@ This downloads two files into `data/raw/$PERIOD/`:
 - `${PERIOD}_Texto_de_estatisticas_monetarias_e_de_credito.pdf`
 
 **If a download fails with HTTP 404:** the BCB has not yet published that nominal release candidate. Continue to the next candidate, if any. If all missing candidates fail with HTTP 404, do not proceed; report that no pending BCB release is available yet and retry on the next scheduled run or check manually at `https://www.bcb.gov.br/estatisticas/estatisticasmonetariascredito`.
+
+**If the direct downloader cannot reach the BCB for a non-404 network reason:** use `python3 -m src.download_bcb_via_github PERIOD`. This dispatches `.github/workflows/fetch-bcb-release.yml` on `main`, downloads the untouched official files on a GitHub-hosted runner, validates their XLSX/PDF signatures, and copies the workflow artifact into `data/raw/PERIOD/`. The bridge requires an authenticated `gh` session and the workflow must already exist on the selected GitHub ref. It must not be used to reinterpret an actual HTTP 404 as a network failure.
 
 **If files already exist** (re-run scenario): the script skips them by default. Add `--overwrite` to force re-download.
 
@@ -349,6 +366,7 @@ IDC/
 | Symptom | Likely cause | Action |
 |---|---|---|
 | HTTP 404 on download | BCB release candidate not yet published | Try the next candidate; if all candidates fail with 404, abort and retry next scheduled run |
+| DNS or socket failure reaching BCB | Local runner has no outbound access | If `gh auth status` succeeds, run `python3 -m src.download_bcb_via_github PERIOD`; otherwise report the infrastructure blocker |
 | `ModuleNotFoundError: No module named 'pandas'` | `.venv` missing or not activated | Run `uv venv && uv pip install -r requirements.txt` |
 | `RuntimeError: Bloco automático do IDC não encontrado no README.md` | README markers were accidentally removed | Restore `<!-- IDC_LATEST_START -->` / `<!-- IDC_LATEST_END -->` and `<!-- IDC_STATS_START -->` / `<!-- IDC_STATS_END -->` markers in README.md |
 | Index value unchanged from prior month | New XLSX may contain same data (BCB sometimes re-publishes) | Compare `data/raw/PERIOD/` file size against prior period; flag for human review |

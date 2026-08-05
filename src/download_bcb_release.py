@@ -12,6 +12,7 @@ BASE_URL = "https://www.bcb.gov.br/content/estatisticas/hist_estatisticasmonetar
 TABLE_SUFFIX = "Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx"
 REPORT_SUFFIX = "Texto_de_estatisticas_monetarias_e_de_credito.pdf"
 USER_AGENT = "Mozilla/5.0 (compatible; IDC-data-downloader/1.0)"
+MIN_FILE_SIZE = 10_000
 
 
 def _validate_period(period: str) -> str:
@@ -32,6 +33,19 @@ def _release_files(period: str) -> dict[str, str]:
     }
 
 
+def _validate_downloaded_file(path: Path, filename: str) -> None:
+    """Reject truncated responses and HTML error pages before publishing a file."""
+    if not path.is_file() or path.stat().st_size < MIN_FILE_SIZE:
+        raise RuntimeError(f"Arquivo baixado ausente ou muito pequeno: {filename}")
+
+    with path.open("rb") as downloaded_file:
+        header = downloaded_file.read(5)
+    if filename.endswith(".xlsx") and not header.startswith(b"PK\x03\x04"):
+        raise RuntimeError(f"Conteudo invalido para XLSX: {filename}")
+    if filename.endswith(".pdf") and header != b"%PDF-":
+        raise RuntimeError(f"Conteudo invalido para PDF: {filename}")
+
+
 def _download(url: str, destination: Path, overwrite: bool) -> None:
     if destination.exists() and not overwrite:
         print(f"Arquivo ja existe, pulando: {destination}")
@@ -44,6 +58,7 @@ def _download(url: str, destination: Path, overwrite: bool) -> None:
     try:
         with urlopen(request, timeout=60) as response, tmp_destination.open("wb") as output:
             shutil.copyfileobj(response, output)
+        _validate_downloaded_file(tmp_destination, destination.name)
     except HTTPError as exc:
         tmp_destination.unlink(missing_ok=True)
         raise RuntimeError(f"Falha ao baixar {url}: HTTP {exc.code}") from exc
@@ -53,6 +68,9 @@ def _download(url: str, destination: Path, overwrite: bool) -> None:
     except OSError as exc:
         tmp_destination.unlink(missing_ok=True)
         raise RuntimeError(f"Falha ao salvar {destination}: {exc}") from exc
+    except RuntimeError:
+        tmp_destination.unlink(missing_ok=True)
+        raise
 
     tmp_destination.replace(destination)
     print(f"Baixado: {destination}")
