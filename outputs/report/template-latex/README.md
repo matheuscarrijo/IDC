@@ -49,8 +49,8 @@ O PDF de saída é `template.pdf`.
    \newcommand{\reportdate}{28 de maio de 2026}
 
    \newcommand{\authorone}{Lauro Gonzalez}
-   \newcommand{\authortwo}{Rafael Schiozer}
-   \newcommand{\authorthree}{Matheus L. Carrijo}
+   \newcommand{\authortwo}{Matheus L. Carrijo}
+   \newcommand{\authorthree}{Rafael Schiozer}
    ```
 
 3. Preencha os `\placeholder{...}` e os comandos da seção "DADOS DO RELATÓRIO", preservando a estrutura de seções reconhecida por `src.build_report_docx`.
@@ -133,4 +133,4 @@ O template LaTeX é software livre. O logotipo pertence à FGV e é usado aqui a
 
 ## Contato / Autoria original do conteúdo
 
-Lauro Gonzalez, Rafael Schiozer e Matheus L. Carrijo — FGVcemif / FGV-EAESP.
+Lauro Gonzalez, Matheus L. Carrijo e Rafael Schiozer — FGVcemif / FGV-EAESP.

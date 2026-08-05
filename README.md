@@ -1,6 +1,6 @@
 # Índice de Desconforto de Crédito
 
-Autores: Lauro Gonzalez, Rafael Schiozer, Matheus L. Carrijo
+Autores: Lauro Gonzalez, Matheus L. Carrijo, Rafael Schiozer
 
 Este repositório contém o código e a documentação para a construção de um **índice** que captura o nível de desconforto de crédito das famílias brasileiras.
 
@@ -270,11 +270,11 @@ python -m src.download_bcb_release YYYYMM
 
 ## 9. Autoria e Citação
 
-O Índice de Desconforto de Crédito (IDC) foi idealizado e implementado por **Lauro Gonzalez**, **Rafael Schiozer** e **Matheus L. Carrijo**, pesquisadores integrantes do **FGVcemif** e da **FGV-EAESP**.
+O Índice de Desconforto de Crédito (IDC) foi idealizado e implementado por **Lauro Gonzalez**, **Matheus L. Carrijo** e **Rafael Schiozer**, pesquisadores integrantes do **FGVcemif** e da **FGV-EAESP**.
 
 Ao citar ou reutilizar o IDC, recomenda-se a seguinte referência:
 
-> Gonzalez, Lauro; Schiozer, Rafael; Carrijo, Matheus L. Índice de Desconforto de Crédito (IDC). FGVcemif/FGV-EAESP.
+> Gonzalez, Lauro; Carrijo, Matheus L.; Schiozer, Rafael. Índice de Desconforto de Crédito (IDC). FGVcemif/FGV-EAESP.
 
 Veja também o arquivo [CITATION.cff](CITATION.cff).
 

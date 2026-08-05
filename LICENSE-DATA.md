@@ -8,7 +8,7 @@ Texto da licença: <https://creativecommons.org/licenses/by/4.0/>
 
 Ao usar, redistribuir ou adaptar materiais cobertos por esta licença, atribua crédito de forma razoável, por exemplo:
 
-> Gonzalez, Lauro; Schiozer, Rafael; Carrijo, Matheus L. Índice de Desconforto de Crédito (IDC). FGVcemif/FGV-EAESP. Disponível no repositório do projeto.
+> Gonzalez, Lauro; Carrijo, Matheus L.; Schiozer, Rafael. Índice de Desconforto de Crédito (IDC). FGVcemif/FGV-EAESP. Disponível no repositório do projeto.
 
 Indique também se foram feitas alterações.
 
