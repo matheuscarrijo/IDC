@@ -140,10 +140,12 @@ Assim, a competência da divulgação do Banco Central não necessariamente coin
 
 ## 5. Como Reproduzir
 
-**Pré-requisitos:** Python 3.9+ com as dependências listadas em `requirements.txt`:
+**Pré-requisitos:** Python 3.11+ com as dependências listadas em `requirements.txt`. O projeto usa `uv` para criar e sincronizar o ambiente local:
 
 ```bash
-pip install -r requirements.txt
+uv venv
+uv pip install -r requirements.txt
+source .venv/bin/activate
 ```
 
 **Atualização mensal dos dados do Banco Central** a partir do diretório raiz do projeto:
@@ -180,7 +182,7 @@ python -m src.build_report_docx \
   --require-filled
 ```
 
-O processo mensal completo, inclusive a compilação e a revisão visual dos dois formatos, está documentado em [`PIPELINE.md`](PIPELINE.md).
+O processo mensal completo, inclusive a compilação e a revisão visual do PDF e do DOCX, está documentado em [`PIPELINE.md`](PIPELINE.md).
 
 ## 6. Estrutura do Repositório
 

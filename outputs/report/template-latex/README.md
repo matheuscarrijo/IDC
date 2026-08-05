@@ -13,8 +13,9 @@ O objetivo é produzir a saída PDF de referência e, a partir da mesma fonte pr
 ## Arquivos
 
 - `template.tex` — o template propriamente dito (auto-contido)
-- `logo.png` — logotipo institucional extraído do DOCX original (usado na capa)
-- `template.pdf` — exemplo compilado (3 páginas de demonstração)
+- `logo.png` — logotipo institucional usado na capa
+
+Ao compilar, LuaLaTeX gera localmente `template.pdf`, `template.aux`, `template.log` e `template.out`. Esses artefatos reproduzíveis são ignorados pelo Git; o PDF atual deve ter cinco páginas, seguindo a mesma organização exigida para o relatório mensal.
 
 ## Como compilar
 
@@ -44,7 +45,7 @@ O PDF de saída é `template.pdf`.
 
    ```latex
    \newcommand{\reporttitle}{Índice de Desconforto de Crédito}
-   \newcommand{\reportsubtitle}{Nota Técnica de Atualização — Competência março de 2026}
+   \newcommand{\reportsubtitle}{Nota Técnica de Atualização --- Divulgação maio de 2026; competência março de 2026}
    \newcommand{\reportdate}{28 de maio de 2026}
 
    \newcommand{\authorone}{Lauro Gonzalez}
@@ -52,14 +53,15 @@ O PDF de saída é `template.pdf`.
    \newcommand{\authorthree}{Matheus L. Carrijo}
    ```
 
-3. Substitua o conteúdo de exemplo (a partir de `\section{Introdução}`) pelo texto real do relatório, ou use `\input{conteudo.tex}`.
+3. Preencha os `\placeholder{...}` e os comandos da seção "DADOS DO RELATÓRIO", preservando a estrutura de seções reconhecida por `src.build_report_docx`.
 
-4. Insira figuras com o formato padrão:
+4. Mantenha as figuras fora do corpo principal. Atualize os dois blocos existentes no `Anexo de figuras`, usando `[H]`, largura integral e `\clearpage` entre eles:
 
    ```latex
-   \begin{figure}[htbp]
+   \clearpage
+   \begin{figure}[H]
      \centering
-     \includegraphics[width=\linewidth]{minha-figura.png}
+     \includegraphics[width=\linewidth]{index.png}
      \caption{Evolução do Índice de Desconforto de Crédito (jan-2014 a mar-2026).}
      \label{fig:indice}
      \fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito, divulgação 202605), elaboração própria.}
@@ -115,14 +117,14 @@ python -m src.build_report_docx \
 ## Estrutura recomendada para releases mensais
 
 ```
-outputs/report/update-202605/
-├── idc-update-202605.tex          (copiado de template.tex + preenchido)
-├── idc-update-202605.docx         (gerado do .tex preenchido; editável)
+outputs/report/update-YYYYMM/
+├── idc-update-YYYYMM.tex          (copiado de template.tex + preenchido)
+├── idc-update-YYYYMM.docx         (gerado do .tex preenchido; editável)
 ├── logo.png                       (copiado)
 ├── components_raw.png
 ├── index.png
 ├── ...
-└── idc-update-202605.pdf          (gerado)
+└── idc-update-YYYYMM.pdf          (gerado)
 ```
 
 ## Licença
