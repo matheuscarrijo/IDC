@@ -694,7 +694,7 @@ def _plot_raw_component_panel(
 
 def _plot_components_raw(components: pd.DataFrame) -> None:
     """Three stacked panels (shared x-axis) — fits A4 page width."""
-    fig, axes = plt.subplots(3, 1, figsize=(_FIG_W, 8.0), sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(_FIG_W, 7.2), sharex=True)
     fig.subplots_adjust(hspace=0.4)
 
     configs = [

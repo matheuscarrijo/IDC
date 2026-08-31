@@ -243,6 +243,17 @@ marcava \textbf{\placeholder{X,XXX}} --- o índice \placeholder{subiu\slash{}cai
 \placeholder{Parágrafo de síntese sobre o significado conjunto dos movimentos.
 Lembre: o IDC mede posição relativa, não endividamento absoluto.}
 
+% SEÇÃO OPCIONAL — REVISÕES DOS DADOS
+% Não inclua essa seção no relatório mensal por padrão.
+% Somente quando "python -m src.compare_releases YYYYMM" indicar revisões,
+% insira aqui, antes de "Trajetória do índice", uma seção intitulada
+% "Revisões dos dados". Informe as safras comparadas, séries e competências
+% revisadas e inclua uma tabela com TODAS as competências cujo IDC mudou:
+% competência, IDC na safra anterior, IDC recalculado e diferença. Explique
+% também a diferença entre a variação mensal na safra atual e a comparação
+% com o valor publicado na nota anterior. Não liste na tabela revisões brutas
+% que não alteraram o IDC.
+
 \section{Trajetória do índice}
 
 A Figura~\ref{fig:indice} apresenta a evolução do IDC desde \janelainicio{} e situa a
@@ -258,6 +269,8 @@ O índice será estendido para \mesproximo{} caso a série de comprometimento de
 famílias (SGS~29034) avance para essa competência.
 
 \section*{Notas}
+
+\begingroup\footnotesize
 
 Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir de
 três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
@@ -275,6 +288,7 @@ pelo índice. O relatório de divulgação está disponível em
 
 Citação recomendada. Gonzalez, L.; Carrijo, M.~L.; Schiozer, R.
 \textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.
+\endgroup
 
 % As figuras ficam em um anexo próprio, uma por página. Assim, nenhuma figura
 % disputa espaço com o corpo textual ou precisa ser reduzida para caber.

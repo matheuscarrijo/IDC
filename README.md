@@ -118,6 +118,8 @@ onde $\min_\tau$ e $\max_\tau$ denotam o mínimo e o máximo calculados sobre a 
 
 A janela é **expansiva** — cresce a partir do início da amostra (mar-2011), sem viés de lookahead: em cada período $t$, utilizam-se apenas observações disponíveis até $t$. Os primeiros anos do histórico servem como período de aquecimento; o índice é exibido a partir de **jan-2014** (~34 meses de aquecimento).
 
+Cada atualização mensal também compara a nova planilha do Banco Central com a divulgação imediatamente anterior. Observações novas são separadas de alterações na cobertura histórica, inclusive revisões e preenchimentos retroativos. Quando há alteração, a nota mensal inclui uma seção própria com as séries e competências afetadas e uma tabela de todos os meses cujo IDC mudou, mostrando o valor na divulgação anterior, o valor recalculado e a diferença. A seção também distingue a variação mensal recalculada na safra atual da diferença em relação ao valor antes publicado.
+
 ### 3.2. Agregação
 
 Após normalização, o índice é calculado como média simples dos três componentes:
@@ -163,6 +165,12 @@ python -m src.download_bcb_via_github 202607
 ```
 
 Esse fallback requer `gh auth status` válido e o workflow `fetch-bcb-release.yml` disponível na branch `main`. O runner baixa os arquivos do BCB, valida as assinaturas XLSX/PDF e os devolve como artefato antes de a execução local do índice continuar.
+
+Antes de executar o índice, audite eventuais revisões da divulgação atual contra a imediatamente anterior:
+
+```bash
+python -m src.compare_releases 202607
+```
 
 **Execução do índice** a partir do diretório raiz do projeto:
 

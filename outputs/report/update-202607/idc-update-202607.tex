@@ -245,25 +245,59 @@ O movimento não foi disseminado: o recuo resultou da queda de Q, enquanto C e I
     permaneceu próximo do extremo superior de sua faixa histórica.
 \end{itemize}
 
-No agregado, a queda de Q mais que compensou as altas de C e I, levando o IDC a pequeno
-recuo. O indicador mede a posição relativa do desconforto de crédito na série observada,
-não uma medida absoluta de endividamento.
+Com C e I no teto de \textbf{1,000} da escala normalizada, Q foi o único componente
+a se mover na agregação e determinou o pequeno recuo do IDC. O indicador mede a
+posição relativa do desconforto de crédito, não uma medida absoluta de endividamento.
+
+\section{Revisões dos dados}
+
+A comparação das divulgações \textbf{202606} e \textbf{202607} identificou revisões
+em observações já publicadas. Em C, \textbf{jan-2026} passou de \textbf{28,3\%} para \textbf{28,2\%}
+e \textbf{abr-2026}, de \textbf{28,2\%} para \textbf{28,4\%}; I não mudou. Nos
+insumos de Q, o crédito livre PF total foi revisto de \textbf{fev-2026} a
+\textbf{mai-2026}; cheque especial e crédito pessoal não consignado, de
+\textbf{mar-2026} a \textbf{mai-2026}; e cartões rotativo e parcelado, em
+\textbf{mai-2026}.
+
+A Tabela~\ref{tab:revisoes-idc} lista as duas competências comuns cujo IDC mudou;
+revisões brutas sem efeito no índice não aparecem na tabela.
+
+\begin{table}[htbp]
+  \centering
+  \caption{IDC alterado pela revisão dos dados --- divulgações 202606 e 202607.}
+  \label{tab:revisoes-idc}
+  \begin{tabular}{lrrr}
+    \toprule
+    Competência & IDC na 202606 & IDC na 202607 & Revisão \\
+    \midrule
+    mar-2026 & 0,960374 & 0,960299 & -0,000075 \\
+    abr-2026 & 0,986495 & 0,990355 & +0,003859 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito,
+divulgações 202606 e 202607), elaboração própria.}
+
+O IDC foi revisto em \textbf{-0,000075} em \textbf{mar-2026} e em
+\textbf{+0,003859} em \textbf{abr-2026}; neste último mês, C normalizado passou de
+\textbf{0,988} para \textbf{1,000} e Q, de \textbf{0,971250} para \textbf{0,971064}.
+Na safra \textbf{202607}, a variação de maio ante abril foi de
+\textbf{-0,009123~ponto}; em relação
+ao IDC de abril publicado na nota anterior, a diferença é de \textbf{-0,005264~ponto}.
 
 \section{Trajetória do índice}
 
-A Figura~\ref{fig:indice} apresenta a evolução do IDC desde \janelainicio{} e situa a
-observação mais recente no histórico do índice. A Figura~\ref{fig:componentes} detalha
-as séries brutas de comprometimento de renda, inadimplência e qualidade do crédito,
-permitindo relacionar a leitura agregada do IDC aos movimentos observados em cada
-componente.
+As Figuras~\ref{fig:indice} e \ref{fig:componentes} apresentam, respectivamente, a
+trajetória do IDC desde \janelainicio{} e as séries brutas de C, I e Q.
 \section{Próxima atualização}
 
-A próxima atualização do IDC está prevista para a divulgação seguinte das Estatísticas
-Monetárias e de Crédito do Banco Central, esperada para \proxdivulgacao.
-O índice será estendido para \mesproximo{} caso a série de comprometimento de renda das
-famílias (SGS~29034) avance para essa competência.
+A próxima atualização é esperada para \proxdivulgacao; o IDC será estendido para
+\mesproximo{} caso a série de comprometimento de renda (SGS~29034) avance até lá.
 
 \section*{Notas}
+
+\begingroup\footnotesize
 
 Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir de
 três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
@@ -281,6 +315,7 @@ pelo índice. O relatório de divulgação está disponível em
 
 Citação recomendada. Gonzalez, L.; Carrijo, M.~L.; Schiozer, R.
 \textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.
+\endgroup
 
 % As figuras ficam em um anexo próprio, uma por página. Assim, nenhuma figura
 % disputa espaço com o corpo textual ou precisa ser reduzida para caber.

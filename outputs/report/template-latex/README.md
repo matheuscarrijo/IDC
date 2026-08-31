@@ -53,7 +53,7 @@ O PDF de saída é `template.pdf`.
    \newcommand{\authorthree}{Rafael Schiozer}
    ```
 
-3. Preencha os `\placeholder{...}` e os comandos da seção "DADOS DO RELATÓRIO", preservando a estrutura de seções reconhecida por `src.build_report_docx`.
+3. Preencha os `\placeholder{...}` e os comandos da seção "DADOS DO RELATÓRIO", preservando a estrutura de seções reconhecida por `src.build_report_docx`. Execute antes `python -m src.compare_releases YYYYMM`. O template não traz `Revisões dos dados` por padrão: insira essa seção entre `Resultados` e `Trajetória do índice` somente quando o comparador encontrar revisões de observações já publicadas. Quando ela for necessária, inclua uma tabela com todas as competências cujo IDC efetivamente mudou, comparando o valor da safra anterior, o valor recalculado e a diferença; revisões brutas sem efeito no IDC ficam apenas na síntese textual. Sem revisões, não acrescente seção nem texto padronizado sobre o tema.
 
 4. Mantenha as figuras fora do corpo principal. Atualize os dois blocos existentes no `Anexo de figuras`, usando `[H]`, largura integral e `\clearpage` entre eles:
 
@@ -97,7 +97,7 @@ e comente as linhas de TeX Gyre.
 
 ## Relação com o template DOCX
 
-O LaTeX é a autoridade de conteúdo e design. O conversor Word reproduz em elementos editáveis a página A4, a capa, os cabeçalhos e rodapés internos, a hierarquia de títulos, o espaçamento, a tabela em estilo `booktabs`, as listas, as figuras, as legendas e as notas de fonte.
+O LaTeX é a autoridade de conteúdo e design. O conversor Word reproduz em elementos editáveis a página A4, a capa, os cabeçalhos e rodapés internos, a hierarquia de títulos, o espaçamento, as tabelas em estilo `booktabs` — inclusive a tabela opcional de IDCs revisados —, a seção opcional de revisões, as listas, as figuras, as legendas e as notas de fonte.
 
 As figuras não dependem da decisão automática de floats. O corpo principal contém somente a narrativa, a tabela e as notas; depois dele, `Anexo de figuras` reúne exatamente uma figura por página. Ambas usam a largura integral do texto; se um gráfico for alto demais, corrija a proporção do PNG na geração da figura em vez de reduzi-lo até ficar ilegível. O DOCX aplica a mesma política com quebras de página explícitas e controles `keep-with-next`/`keep-together` do Word.
 

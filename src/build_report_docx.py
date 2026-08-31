@@ -26,11 +26,12 @@ from docx.shared import Mm, Pt, RGBColor
 
 BODY_FONT = "Palatino"
 SANS_FONT = "Helvetica"
+SIGN_FONT = "Arial"
 BLACK = RGBColor(0, 0, 0)
 GRAY = RGBColor(95, 95, 95)
 PLACEHOLDER_RED = RGBColor(155, 35, 35)
 FIGURE_WIDTH_MM = 150.0
-FIGURE_MAX_HEIGHT_MM = {1: 150.0, 2: 205.0}
+FIGURE_MAX_HEIGHT_MM = {1: 150.0, 2: 180.0}
 FIGURE_PLACEHOLDER_HEIGHT_MM = {1: 140.0, 2: 170.0}
 
 
@@ -173,7 +174,12 @@ def _append_inline(
     italic: bool = False,
     refs: dict[str, str] | None = None,
 ) -> None:
-    refs = refs or {"tab:componentes": "1", "fig:indice": "1", "fig:componentes": "2"}
+    refs = refs or {
+        "tab:componentes": "1",
+        "tab:revisoes-idc": "2",
+        "fig:indice": "1",
+        "fig:componentes": "2",
+    }
     source = source.replace("---", "—")
     index = 0
     buffer: list[str] = []
@@ -183,9 +189,14 @@ def _append_inline(
             return
         text = "".join(buffer)
         buffer.clear()
-        if text:
-            run = paragraph.add_run(text)
-            _set_run_font(run)
+        for fragment in re.split(r"(\+)", text):
+            if not fragment:
+                continue
+            run = paragraph.add_run(fragment)
+            # LibreOffice renders Palatino's plus sign as a diamond on macOS.
+            # Keep the surrounding report typography and use the sans face only
+            # for this one glyph so positive values remain unambiguous in Word.
+            _set_run_font(run, SIGN_FONT if fragment == "+" else BODY_FONT)
             run.bold = bold
             run.italic = italic
 
@@ -264,6 +275,18 @@ def _set_paragraph_body(paragraph, *, first_line: bool = True) -> None:
 def _add_body_paragraph(document, source: str, *, first_line: bool = True):
     paragraph = document.add_paragraph(style="Normal")
     _set_paragraph_body(paragraph, first_line=first_line)
+    _append_inline(paragraph, source)
+    return paragraph
+
+
+def _add_note_paragraph(document, source: str, *, first_line: bool = True):
+    paragraph = document.add_paragraph(style="IDC Notes")
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    paragraph.paragraph_format.line_spacing = Pt(13)
+    paragraph.paragraph_format.space_before = Pt(0)
+    paragraph.paragraph_format.space_after = Pt(0)
+    paragraph.paragraph_format.first_line_indent = Mm(5.3) if first_line else Mm(0)
+    paragraph.paragraph_format.widow_control = True
     _append_inline(paragraph, source)
     return paragraph
 
@@ -495,6 +518,19 @@ def _configure_styles(document) -> None:
         style.paragraph_format.space_after = Pt(4 if style_name == "IDC Caption" else 8)
         style.paragraph_format.keep_with_next = style_name == "IDC Caption"
 
+    if "IDC Notes" not in styles:
+        notes_style = styles.add_style("IDC Notes", WD_STYLE_TYPE.PARAGRAPH)
+    else:
+        notes_style = styles["IDC Notes"]
+    notes_style.font.name = BODY_FONT
+    notes_style.font.size = Pt(9.5)
+    notes_style.font.color.rgb = BLACK
+    notes_style._element.rPr.rFonts.set(qn("w:ascii"), BODY_FONT)
+    notes_style._element.rPr.rFonts.set(qn("w:hAnsi"), BODY_FONT)
+    notes_style.paragraph_format.line_spacing = Pt(13)
+    notes_style.paragraph_format.space_before = Pt(0)
+    notes_style.paragraph_format.space_after = Pt(0)
+
 
 def _configure_page(section) -> None:
     section.page_width = Mm(210)
@@ -631,7 +667,12 @@ def _source_note(document, source: str):
     return paragraph
 
 
-def _parse_table(table_block: str) -> tuple[str, list[list[str]], str | None]:
+def _parse_table(
+    table_block: str,
+    *,
+    expected_columns: int,
+    table_name: str,
+) -> tuple[str, list[list[str]], str | None]:
     caption = _command_argument(table_block, "caption")[0]
     source_match = _optional_command_argument(table_block, "fonte")
     source = source_match[0] if source_match else None
@@ -648,8 +689,14 @@ def _parse_table(table_block: str) -> tuple[str, list[list[str]], str | None]:
     rows: list[list[str]] = []
     for row_source in re.split(r"\\\\", tabular):
         cells = [_collapse_source(cell) for cell in row_source.split("&")]
-        if len(cells) == 3 and any(cells):
+        if len(cells) >= 2 and any(cells):
             rows.append(cells)
+    if not rows:
+        raise ValueError(f"{table_name} is empty")
+    if any(len(row) != expected_columns for row in rows):
+        raise ValueError(
+            f"{table_name} must have exactly {expected_columns} columns"
+        )
     return caption, rows, source
 
 
@@ -677,6 +724,7 @@ def _parse_report(source: str) -> dict:
     summary_marker = expanded.find(r"\section{Resumo}")
     results_marker = expanded.find(r"\section{Resultados de", summary_marker)
     trajectory_marker = expanded.find(r"\section{Trajetória do índice}", results_marker)
+    revisions_marker = expanded.find(r"\section{Revisões dos dados}", results_marker, trajectory_marker)
     next_marker = expanded.find(r"\section{Próxima atualização}", trajectory_marker)
     notes_marker = expanded.find(r"\section*{Notas}", next_marker)
     annex_marker = expanded.find(r"\section*{Anexo de figuras}", notes_marker)
@@ -686,30 +734,74 @@ def _parse_report(source: str) -> dict:
     summary_end = summary_marker + len(r"\section{Resumo}")
     results_title, _, results_content_start = _command_argument(expanded, "section", results_marker)
     summary = _paragraph_fragments(expanded[summary_end:results_marker])
+    results_end = revisions_marker if revisions_marker >= 0 else trajectory_marker
 
     table_start = expanded.find(r"\begin{table}", results_content_start)
     table_end = expanded.find(r"\end{table}", table_start)
     if table_start == -1 or table_end == -1:
         raise ValueError("The IDC results table was not found")
     table_end += len(r"\end{table}")
-    table_caption, table_rows, table_source = _parse_table(expanded[table_start:table_end])
+    table_caption, table_rows, table_source = _parse_table(
+        expanded[table_start:table_end],
+        expected_columns=3,
+        table_name="The IDC results table",
+    )
 
     after_table = table_end
     external_source = _optional_command_argument(expanded, "fonte", table_end)
-    if external_source and external_source[1] < trajectory_marker:
+    if external_source and external_source[1] < results_end:
         table_source = external_source[0]
         after_table = external_source[2]
     if table_source is None:
         raise ValueError("The IDC results table is missing its source note")
 
-    item_start = expanded.find(r"\begin{itemize}", after_table, trajectory_marker)
-    item_end = expanded.find(r"\end{itemize}", item_start, trajectory_marker)
+    item_start = expanded.find(r"\begin{itemize}", after_table, results_end)
+    item_end = expanded.find(r"\end{itemize}", item_start, results_end)
     if item_start == -1 or item_end == -1:
         raise ValueError("The IDC component list was not found")
     results_intro = _paragraph_fragments(expanded[after_table:item_start])
     item_block = expanded[item_start + len(r"\begin{itemize}"):item_end]
     items = [_collapse_source(item) for item in re.split(r"\\item\s+", item_block) if item.strip()]
-    results_summary = _paragraph_fragments(expanded[item_end + len(r"\end{itemize}"):trajectory_marker])
+    results_summary = _paragraph_fragments(expanded[item_end + len(r"\end{itemize}"):results_end])
+
+    revisions_title = None
+    revisions = []
+    revisions_intro = []
+    revisions_summary = []
+    revision_table_caption = None
+    revision_table_rows = []
+    revision_table_source = None
+    if revisions_marker >= 0:
+        revisions_title, _, revisions_start = _command_argument(
+            expanded, "section", revisions_marker
+        )
+        revision_table_start = expanded.find(r"\begin{table}", revisions_start, trajectory_marker)
+        if revision_table_start >= 0:
+            revision_table_end = expanded.find(r"\end{table}", revision_table_start, trajectory_marker)
+            if revision_table_end == -1:
+                raise ValueError("The IDC revision table is not closed")
+            revision_table_end += len(r"\end{table}")
+            revision_table_caption, revision_table_rows, revision_table_source = _parse_table(
+                expanded[revision_table_start:revision_table_end],
+                expected_columns=4,
+                table_name="The IDC revision table",
+            )
+            revisions_intro = _paragraph_fragments(expanded[revisions_start:revision_table_start])
+            after_revision_table = revision_table_end
+            external_revision_source = _optional_command_argument(
+                expanded, "fonte", revision_table_end
+            )
+            if external_revision_source and external_revision_source[1] < trajectory_marker:
+                revision_table_source = external_revision_source[0]
+                after_revision_table = external_revision_source[2]
+            if revision_table_source is None:
+                raise ValueError("The IDC revision table is missing its source note")
+            revisions_summary = _paragraph_fragments(
+                expanded[after_revision_table:trajectory_marker]
+            )
+        else:
+            raise ValueError("The IDC revision section requires a comparison table")
+        revisions = revisions_intro + revisions_summary
 
     trajectory_start = trajectory_marker + len(r"\section{Trajetória do índice}")
     trajectory_intro = _paragraph_fragments(expanded[trajectory_start:next_marker])
@@ -740,6 +832,13 @@ def _parse_report(source: str) -> dict:
         "results_intro": results_intro,
         "items": items,
         "results_summary": results_summary,
+        "revisions_title": revisions_title,
+        "revisions": revisions,
+        "revisions_intro": revisions_intro,
+        "revisions_summary": revisions_summary,
+        "revision_table_caption": revision_table_caption,
+        "revision_table_rows": revision_table_rows,
+        "revision_table_source": revision_table_source,
         "trajectory_intro": trajectory_intro,
         "figures": figures,
         "next_title": next_title,
@@ -750,6 +849,8 @@ def _parse_report(source: str) -> dict:
 
 
 def _add_results_table(document, rows: list[list[str]]) -> None:
+    if not rows or any(len(row) != 3 for row in rows):
+        raise ValueError("The IDC results table must have exactly 3 columns")
     table = document.add_table(rows=len(rows), cols=3)
     table.autofit = False
     widths = [4535, 1700, 2269]  # 80 mm, 30 mm, 40 mm.
@@ -764,7 +865,37 @@ def _add_results_table(document, rows: list[list[str]]) -> None:
             paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if column_index == 0 else WD_ALIGN_PARAGRAPH.RIGHT
             _append_inline(paragraph, source)
             for run in paragraph.runs:
-                _set_run_font(run, BODY_FONT, 10.5)
+                _set_run_font(run, SIGN_FONT if run.text == "+" else BODY_FONT, 10.5)
+            border_values: dict[str, dict[str, str]] = {}
+            if row_index == 0:
+                border_values["top"] = {"val": "single", "sz": "8", "color": "000000"}
+                border_values["bottom"] = {"val": "single", "sz": "4", "color": "000000"}
+            if row_index == len(rows) - 1:
+                border_values["bottom"] = {"val": "single", "sz": "8", "color": "000000"}
+            _set_cell_borders(cell, **border_values)
+    table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
+
+
+def _add_revision_table(document, rows: list[list[str]]) -> None:
+    if not rows or any(len(row) != 4 for row in rows):
+        raise ValueError("The IDC revision table must have exactly 4 columns")
+    table = document.add_table(rows=len(rows), cols=4)
+    table.autofit = False
+    widths = [1700, 2268, 2268, 2268]  # 30 mm plus three 40 mm columns.
+    _set_table_geometry(table, widths)
+    for row_index, row in enumerate(rows):
+        for column_index, source in enumerate(row):
+            cell = table.cell(row_index, column_index)
+            paragraph = cell.paragraphs[0]
+            paragraph.paragraph_format.space_before = Pt(0)
+            paragraph.paragraph_format.space_after = Pt(0)
+            paragraph.paragraph_format.line_spacing = 1.0
+            paragraph.alignment = (
+                WD_ALIGN_PARAGRAPH.LEFT if column_index == 0 else WD_ALIGN_PARAGRAPH.RIGHT
+            )
+            _append_inline(paragraph, source)
+            for run in paragraph.runs:
+                _set_run_font(run, SIGN_FONT if run.text == "+" else BODY_FONT, 10)
             border_values: dict[str, dict[str, str]] = {}
             if row_index == 0:
                 border_values["top"] = {"val": "single", "sz": "8", "color": "000000"}
@@ -892,6 +1023,17 @@ def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = N
     for paragraph in report["results_summary"]:
         _add_body_paragraph(document, paragraph)
 
+    if report["revisions_title"]:
+        _section_heading(document, report["revisions_title"], heading_num_id)
+        for index, paragraph in enumerate(report["revisions_intro"]):
+            _add_body_paragraph(document, paragraph, first_line=index > 0)
+        if report["revision_table_rows"]:
+            _caption(document, "Tabela", 2, report["revision_table_caption"])
+            _add_revision_table(document, report["revision_table_rows"])
+            _source_note(document, report["revision_table_source"])
+        for index, paragraph in enumerate(report["revisions_summary"]):
+            _add_body_paragraph(document, paragraph, first_line=index > 0)
+
     _section_heading(document, "Trajetória do índice", heading_num_id)
     for index, paragraph in enumerate(report["trajectory_intro"]):
         _add_body_paragraph(document, paragraph, first_line=index > 0)
@@ -900,7 +1042,7 @@ def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = N
         _add_body_paragraph(document, paragraph, first_line=index > 0)
     _section_heading(document, "Notas", heading_num_id, numbered=False)
     for index, paragraph in enumerate(report["notes"]):
-        _add_body_paragraph(document, paragraph, first_line=index > 0)
+        _add_note_paragraph(document, paragraph, first_line=index > 0)
 
     # The annex isolates visuals from the flowing report body. Each chart gets
     # a full-width page, so neither chart is shrunk or displaced by text.

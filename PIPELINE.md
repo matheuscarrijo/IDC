@@ -139,6 +139,33 @@ This downloads two files into `data/raw/$PERIOD/`:
 
 **If files already exist** (re-run scenario): the release cycle is complete, so stop without modifying files, rebuilding outputs, or creating another branch/PR. Use `--overwrite` only for a deliberate manual recovery outside the scheduled task.
 
+### 3a. Audit revisions between BCB releases
+
+Before rebuilding the index, compare the new workbook with the immediately preceding
+release already stored in `data/raw/`. The comparator distinguishes changes inside
+the preceding release's historical coverage — revisions and retroactive backfills —
+from genuinely new observations:
+
+```bash
+python3 -m src.compare_releases "$PERIOD"
+```
+
+The output identifies every revised raw observation and lists every overlapping
+reference month whose IDC changes when recalculated under the current vintage, with
+the prior value, recalculated value, and difference. Preserve this output for the
+report-writing step. If there is no preceding workbook, state that the revision audit
+is unavailable for that cycle; do not describe the absence of a comparison as evidence
+that the BCB made no revisions.
+
+For month-over-month analysis, always compare the last two IDC observations rebuilt
+from the **current** workbook, so both months use one internally consistent vintage.
+If the comparator detects revisions, the monthly report must separately disclose all
+historical IDC values that effectively changed, not only the preceding report's last
+month. Present them in a table with reference month, value in the preceding vintage,
+recalculated value in the current vintage, and difference. Do not put raw-data revisions
+that leave the IDC unchanged in this table. This prevents a revised comparison base
+from being mistaken for an IDC calculation error.
+
 ### 4. Rebuild the index and all outputs
 
 ```bash
@@ -202,6 +229,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 | C raw/norm, I raw/norm, Q raw/norm | Last row of `components_raw.csv` and `index.csv` | `29,3% / 0,968`, … |
 | Previous IDC, delta, direction | Compare last two rows of `index.csv` | `1,000`, `0,046`, `recuou` |
 | C/I/Q prev→last in bullets | Compare last two rows of `components_raw.csv` | `29,6% → 29,3%` |
+| Revision disclosure | Use `python3 -m src.compare_releases PERIOD` | All changed IDC months: prior value, recalculated value, difference |
 
 **Analysis text** — the agent must write these in Portuguese based on the data:
 
@@ -209,6 +237,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 - Three `\placeholder{Contextualização histórica e interpretação econômica.}` items (one per component C, I, Q) — each ≈ 2 sentences: magnitude of change, historical positioning, economic interpretation.
 - `\placeholder{Breve caracterização: variação disseminada ou concentrada nos componentes.}` — 1 sentence: was the movement broad-based or driven by one component?
 - `\placeholder{Parágrafo de síntese sobre o significado conjunto dos movimentos.}` — 1–2 sentences: what the joint movement means for household credit stress.
+- `Revisões dos dados` is **absent from the template by default**. Add this section between `Resultados` and `Trajetória do índice` only when the comparator finds changes in previously available observations. Name the compared BCB releases, summarise the revised raw series/months, and add a table containing **every** reference month whose IDC effectively changed, with columns for reference month, prior-vintage IDC, current-vintage recalculation, and difference. Explain which changed month is the current comparison base and distinguish the current-vintage monthly change from the difference versus the value published in the prior report. If no revisions are detected, do not add the section or any “no revisions” boilerplate.
 
 **Format rules for the analysis text:**
 - Write in formal Brazilian Portuguese.
@@ -217,6 +246,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 - Use comma as decimal separator (e.g. `0,954` not `0.954`).
 - Remove each `\placeholder{...}` wrapper and replace the whole command with the written text.
 - The report subtitle must make clear that the update/publication month and IDC reference month can differ. Use the pattern `Divulgação <mês de publicação>; competência <mês de referência>`.
+- A month-over-month figure in the results section must use two observations from the current BCB vintage. When the preceding month's value differs from the prior report because of revisions, explain that difference only in `Revisões dos dados`; never silently mix vintages.
 - Use `\textbf{}` only for numbers, percentages, deltas, and abbreviated month-year values such as `mar-2026`. Do not bold indicator names, institution names, prose labels, or explanatory phrases in running text.
 - Keep every figure's source note inside the same `figure` environment as its `\caption{...}`. Do not place `\fonte{BCB, elaboração própria.}` after `\end{figure}`.
 - Preserve the template's annex structure: the main body contains the narrative, table, trajectory discussion, next-update text, and notes; `\clearpage` then starts `Anexo de figuras`. Keep `[H]` on both figures and `\clearpage` between them so each annex page contains exactly one full-width figure.
@@ -340,6 +370,8 @@ After `python3 main.py` completes, verify:
 - [ ] `outputs/figures/index.png` — file modification timestamp is today.
 - [ ] `README.md` — the two auto-managed tables (between `<!-- IDC_LATEST_START/END -->` and `<!-- IDC_STATS_START/END -->`) show the new date and values.
 - [ ] `README.md` — the latest-release narrative around the managed tables has been manually reviewed and updated for the new release/reference month.
+- [ ] `python3 -m src.compare_releases PERIOD` — revision audit completed against the immediately preceding BCB workbook; newly added observations were not misclassified as revisions.
+- [ ] If revisions were detected, the report contains `Revisões dos dados` with the affected raw series/months, a complete table of every IDC month that changed between vintages, and both change concepts clearly separated; if none were detected, the section is absent, as in the default template.
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.tex` — no `\placeholder{...}` commands remain.
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.pdf` — PDF compiled successfully (if lualatex available).
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.docx` — editable Word report generated from the filled `.tex`, non-empty, and opens successfully.
@@ -355,6 +387,7 @@ IDC/
 ├── requirements.txt                 # pandas, openpyxl, matplotlib, numpy, python-docx
 ├── src/
 │   ├── build_report_docx.py         # Filled IDC LaTeX report → editable DOCX
+│   ├── compare_releases.py           # Consecutive BCB vintages → revision audit
 │   ├── download_bcb_release.py      # BCB HTTP downloader
 │   ├── load_data.py                 # find_latest_bcb_table() auto-detects newest raw dir
 │   ├── build_index.py               # C, I, Q components + expanding min-max normalisation
@@ -393,6 +426,7 @@ IDC/
 | `ModuleNotFoundError: No module named 'docx'` | Updated requirements were not installed | Run `uv pip install -r requirements.txt` in the active environment |
 | DOCX generation rejects `\placeholder{...}` | The monthly `.tex` is still an unfilled template | Fill every monthly placeholder, rerun the LaTeX checks, then regenerate the DOCX |
 | DOCX chart is clipped or pagination differs unexpectedly | Word/LibreOffice layout needs review | Render the DOCX to PNG, fix `src/build_report_docx.py` or tighten prose/spacing without dropping content, regenerate, and inspect every page |
+| Revision section is missing or mixes comparison bases | The prior BCB vintage was not audited before report writing | Run `python3 -m src.compare_releases PERIOD`; use current-vintage values for month-over-month analysis and disclose prior-vintage differences separately |
 | Figure is too tall at full width | The source chart aspect ratio cannot fit its annex page | Adjust the figure dimensions in `src/plot.py` and regenerate the PNG; do not reduce the figure until labels become hard to read |
 | `RuntimeError: Bloco automático do IDC não encontrado no README.md` | README markers were accidentally removed | Restore `<!-- IDC_LATEST_START -->` / `<!-- IDC_LATEST_END -->` and `<!-- IDC_STATS_START -->` / `<!-- IDC_STATS_END -->` markers in README.md |
-| Index value unchanged from prior month | New XLSX may contain same data (BCB sometimes re-publishes) | Compare `data/raw/PERIOD/` file size against prior period; flag for human review |
+| Index value unchanged from prior month | The new observation may be unchanged, or revisions may offset it | Run `python3 -m src.compare_releases PERIOD`, inspect the current-vintage components, and flag unexplained equality for human review; file size alone is not evidence |
