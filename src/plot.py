@@ -947,7 +947,14 @@ def _plot_index(index_df: pd.DataFrame) -> None:
     )
 
     _style_ax(ax, ylabel="Índice [0 – 1]", ylim=(0, 1.05))
-    event_texts = _add_events(ax)
+    event_texts = _add_events(ax, label_positions={
+        "Pandemia\nCOVID-19": {
+            "coords": "data",
+            "y": 0.90,
+            "ha": "center",
+            "va": "center",
+        },
+    })
     legend = ax.legend(loc="upper left")
     ax.set_title("Índice de Desconforto de Crédito — Min-Max — Janela Expansiva")
 

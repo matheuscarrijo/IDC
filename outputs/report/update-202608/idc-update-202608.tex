@@ -1,0 +1,366 @@
+% !TEX program = lualatex
+% =============================================================================
+% Template LaTeX — Índice de Desconforto de Crédito (IDC)
+%
+% Compilar com: lualatex -interaction=nonstopmode template.tex (duas passagens)
+%
+% Uso para novo relatório mensal:
+%   1. Copie esta pasta para outputs/report/update-YYYYMM/
+%   2. Edite a seção "DADOS DO RELATÓRIO" abaixo
+%   3. Preencha o corpo com o conteúdo real
+%   4. Compile duas vezes
+%   5. Gere o DOCX editável com python3 -m src.build_report_docx (veja PIPELINE.md)
+% =============================================================================
+
+\documentclass[11pt,a4paper]{article}
+
+% --- Geometria (margens reproduzidas no DOCX gerado) ---------------------------
+\usepackage[
+  a4paper,
+  left=30mm,
+  right=30mm,
+  top=25mm,
+  bottom=25mm,
+  headheight=14mm,
+  headsep=6mm,
+  footskip=10mm
+]{geometry}
+
+% --- Fonte e codificação (LuaLaTeX / XeLaTeX) ---------------------------------
+\usepackage{fontspec}
+\usepackage{microtype}
+
+\setmainfont{TeX Gyre Pagella}   % clone de Palatino ≈ Cambria
+\setsansfont{TeX Gyre Heros}     % clone de Helvetica ≈ Calibri
+% Com MS Office instalado, descomente para fontes originais:
+% \setmainfont{Cambria}
+% \setsansfont{Calibri}[Scale=0.95]
+
+% --- Português do Brasil ------------------------------------------------------
+\usepackage[brazilian]{babel}
+\usepackage{csquotes}
+
+% --- Gráficos e tabelas -------------------------------------------------------
+\usepackage{graphicx}
+\graphicspath{{.}}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+
+\captionsetup[figure]{
+  format=plain, labelformat=simple, labelsep=period,
+  labelfont={bf}, textfont=it, name=Figura, skip=0.4\baselineskip
+}
+\captionsetup[table]{
+  format=plain, labelformat=simple, labelsep=period,
+  labelfont={bf}, textfont=it, name=Tabela, skip=0.4\baselineskip,
+  position=above
+}
+
+% Nota de fonte abaixo de figuras e tabelas.
+% Para figuras, mantenha a fonte dentro do ambiente figure, imediatamente apos
+% \caption{}. No anexo, [H] mantém gráfico, legenda e fonte como um bloco fixo,
+% sempre em largura integral e com exatamente uma figura por página.
+\newcommand{\fonte}[1]{%
+  \par\vspace{0.2\baselineskip}%
+  \small\textit{Fonte: #1}\par\vspace{0.8\baselineskip}%
+}
+
+% --- Tipografia e layout ------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage[all]{nowidow}
+
+\onehalfspacing
+
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titlespacing{\section}{0pt}{1.2\baselineskip}{0.6\baselineskip}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+\titlespacing{\subsection}{0pt}{1.0\baselineskip}{0.4\baselineskip}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{1em}{}
+\titlespacing{\subsubsection}{0pt}{0.8\baselineskip}{0.3\baselineskip}
+
+% --- Cabeçalho e rodapé -------------------------------------------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape \reporttitle}
+\fancyhead[R]{\small\itshape FGVcemif / FGV-EAESP}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{%
+  \color{black!25}\leaders\hrule height 0.4pt\hfill}}
+\fancyfoot[R]{\thepage}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{firstpage}{
+  \fancyhf{}
+  \fancyfoot[R]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- Hiperlinks ---------------------------------------------------------------
+\usepackage[unicode=true,colorlinks=true,
+  linkcolor=black!70,urlcolor=black!70,citecolor=black!70]{hyperref}
+
+% Campos a preencher — aparecem em vermelho no PDF gerado pelo template
+\newcommand{\placeholder}[1]{\textcolor{red!70!black}{\textbf{[#1]}}}
+
+% =============================================================================
+%   DADOS DO RELATÓRIO — editar a cada atualização mensal
+% =============================================================================
+
+\newcommand{\reporttitle}{Índice de Desconforto de Crédito}
+
+% Período de referência
+\newcommand{\mesreferencia}{junho de 2026}
+\newcommand{\mesref}{jun-2026}
+\newcommand{\mesanterior}{mai-2026}
+\newcommand{\competencia}{202608}
+\newcommand{\mespublicacao}{agosto de 2026}
+\newcommand{\proxdivulgacao}{setembro de 2026}
+\newcommand{\mesproximo}{jul-2026}
+
+% Datas fixas da série (raramente mudam)
+\newcommand{\janelainicio}{jan-2014}   % início da janela exibida do IDC
+\newcommand{\seriesinicio}{mar-2011}   % início das séries brutas C, I, Q
+
+\newcommand{\reportsubtitle}{Nota Técnica de Atualização --- Divulgação \mespublicacao; competência \mesreferencia}
+\newcommand{\reportdate}{31 de agosto de 2026}
+
+% Autores
+\newcommand{\authorone}{Lauro Gonzalez}
+\newcommand{\authortwo}{Matheus L. Carrijo}
+\newcommand{\authorthree}{Rafael Schiozer}
+
+\hypersetup{
+  pdftitle={\reporttitle},
+  pdfauthor={\authorone; \authortwo; \authorthree},
+  pdfsubject={Nota Técnica de Atualização do IDC},
+  pdfkeywords={crédito, endividamento, Brasil, BCB, FGV}
+}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+% --- Capa ---------------------------------------------------------------------
+\begin{titlepage}
+  \noindent\hfill\includegraphics[width=79mm]{logo.png}
+
+  \vspace{18mm}
+
+  \begin{center}
+    {\LARGE\bfseries \reporttitle\par}
+    \vspace{3mm}
+    {\large\itshape \reportsubtitle\par}
+  \end{center}
+
+  \vspace{12mm}
+
+  \begin{flushright}
+    \large
+    \authorone\\[2pt]
+    \authortwo\\[2pt]
+    \authorthree
+  \end{flushright}
+
+  \vfill
+
+  \begin{center}
+    \reportdate
+  \end{center}
+\end{titlepage}
+\thispagestyle{firstpage}
+
+% =============================================================================
+%   CONTEÚDO DO RELATÓRIO
+% =============================================================================
+
+\section{Resumo}
+
+Com a publicação, em \mespublicacao, das Estatísticas Monetárias e de Crédito do
+Banco Central do Brasil (competência \competencia), o Índice de Desconforto
+de Crédito (IDC) foi recalculado e estendido até \mesreferencia{} --- último mês para
+o qual há observação disponível da série de comprometimento de renda das famílias (SGS~29034),
+que delimita o horizonte de cálculo do índice.
+
+Em \textbf{\mesref}, o IDC foi de \textbf{0,959}, com recuo de
+\textbf{0,024~ponto} em relação aos \textbf{0,983} de \textbf{\mesanterior},
+ambos calculados com a safra \textbf{202608}. Apesar da redução, o resultado foi
+o 11º maior entre as \textbf{150} observações válidas desde \textbf{jan-2014}.
+Na escala normalizada, em que \textbf{1,000} representa o pior e \textbf{0,000}
+o melhor resultado histórico observado, C marcou \textbf{1,000}, I,
+\textbf{0,971}, e Q, \textbf{0,907}.
+
+\section{Resultados de \mesreferencia}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Componentes brutos e valores normalizados do IDC --- \mesref.}
+  \label{tab:componentes}
+  \begin{tabular}{p{8.0cm}rr}
+    \toprule
+    Indicador & Valor bruto & Valor normalizado \\
+    \midrule
+    IDC (média dos componentes normalizados)
+      & ---
+      & \textbf{0,959} \\
+    C --- Comprometimento de renda das famílias com a dívida
+      & 28,9\%
+      & 1,000 \\
+    I --- Inadimplência da carteira de crédito livre PF (90+ dias)
+      & 7,4\%
+      & 0,971 \\
+    Q --- Participação das modalidades onerosas no crédito livre PF
+      & 24,5\%
+      & 0,907 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito,
+divulgação \competencia), elaboração própria.}
+
+Em relação à observação imediatamente anterior --- \textbf{\mesanterior}, quando o IDC
+marcava \textbf{0,983} --- o índice recuou
+\textbf{0,024~ponto} em \textbf{\mesref}.
+O movimento não foi disseminado: I e Q recuaram, enquanto C avançou e permaneceu
+no teto da escala normalizada.
+
+\begin{itemize}
+  \item Comprometimento de renda (C) passou de \textbf{28,5\%} para
+    \textbf{28,9\%} (\textbf{+0,4~p.p.}). O avanço levou C a um novo máximo
+    da série bruta. Como o componente já estava no limite superior da normalização,
+    permaneceu em \textbf{1,000}, o pior posicionamento histórico observado.
+
+  \item Inadimplência (I) recuou de \textbf{7,5\%} para \textbf{7,4\%}
+    (\textbf{-0,1~p.p.}), e seu valor normalizado caiu de \textbf{1,000} para
+    \textbf{0,971}. A taxa bruta ainda corresponde ao segundo maior nível do
+    histórico observado.
+
+  \item Qualidade do crédito (Q) caiu de \textbf{24,8\%} para \textbf{24,5\%}
+    (\textbf{-0,3~p.p.}, com base nos valores não arredondados), e seu valor
+    normalizado recuou de \textbf{0,950} para \textbf{0,907}. Essa foi a maior
+    contribuição entre os componentes normalizados para a redução mensal do IDC.
+\end{itemize}
+
+Em conjunto, os dados sinalizam alívio moderado do desconforto agregado em
+\textbf{\mesref}, concentrado nas reduções de I e Q. O IDC permaneceu, porém,
+entre os níveis mais elevados da série, com C no máximo histórico. O indicador
+mede posição relativa no histórico, e não uma medida absoluta de endividamento.
+
+\section{Revisões dos dados}
+
+A comparação das divulgações \textbf{202607} e \textbf{202608} identificou
+\textbf{19} alterações em observações históricas. A inadimplência foi revista em
+\textbf{mai-2026} e \textbf{jun-2026}; o crédito livre PF total, em
+\textbf{nov-2025}, \textbf{dez-2025}, \textbf{jan-2026}, \textbf{fev-2026},
+\textbf{mar-2026}, \textbf{mai-2026} e \textbf{jun-2026}; cheque especial, em
+\textbf{fev-2026}, \textbf{mai-2026} e \textbf{jun-2026}; crédito pessoal não
+consignado, em \textbf{nov-2025}, \textbf{dez-2025}, \textbf{fev-2026},
+\textbf{mai-2026} e \textbf{jun-2026}; e cartões rotativo e parcelado, em
+\textbf{jun-2026}. C não foi revisto.
+
+A Tabela~\ref{tab:revisoes-idc} apresenta todas as seis competências cujo IDC
+mudou; alterações brutas sem efeito no índice não aparecem na tabela.
+
+\begin{table}[htbp]
+  \centering
+  \caption{IDC alterado pela revisão dos dados --- divulgações 202607 e 202608.}
+  \label{tab:revisoes-idc}
+  \begin{tabular}{lrrr}
+    \toprule
+    Competência & IDC na 202607 & IDC na 202608 & Revisão \\
+    \midrule
+    nov-2025 & 0,961223 & 0,961093 & -0,000130 \\
+    dez-2025 & 0,962843 & 0,962738 & -0,000105 \\
+    jan-2026 & 0,995975 & 0,995927 & -0,000048 \\
+    mar-2026 & 0,960299 & 0,960371 & +0,000072 \\
+    abr-2026 & 0,990355 & 0,990431 & +0,000077 \\
+    mai-2026 & 0,981232 & 0,983233 & +0,002001 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito,
+divulgações 202607 e 202608), elaboração própria.}
+
+A maior revisão ocorreu em \textbf{mai-2026}, base da comparação mensal: I passou
+de \textbf{7,6\%} para \textbf{7,5\%}, embora permanecesse em \textbf{1,000}
+normalizado; Q passou de \textbf{24,761307\%} para \textbf{24,800783\%}, e seu
+valor normalizado, de \textbf{0,943695} para \textbf{0,949699}; C não mudou.
+Assim, a variação mensal homogênea na safra \textbf{202608} é de
+\textbf{-0,024030~ponto}; ante o valor de maio publicado na divulgação anterior,
+a diferença seria de \textbf{-0,022029~ponto}. Esta nota usa a primeira comparação.
+
+\section{Trajetória do índice}
+
+A Figura~\ref{fig:indice} mostra que, após atingir \textbf{1,000} em
+\textbf{fev-2026}, o IDC passou a \textbf{0,960} em \textbf{mar-2026},
+\textbf{0,990} em \textbf{abr-2026}, \textbf{0,983} em \textbf{mai-2026} e
+\textbf{0,959} em \textbf{jun-2026}. A Figura~\ref{fig:componentes} evidencia
+que o recuo mais recente refletiu as quedas de I e Q, enquanto C avançou para
+um novo máximo bruto e permaneceu no teto normalizado de \textbf{1,000}.
+\section{Próxima atualização}
+
+A próxima atualização é esperada para \proxdivulgacao; o IDC será estendido para
+\mesproximo{} caso a série de comprometimento de renda (SGS~29034) avance até lá.
+
+\section*{Notas}
+
+\begingroup\tiny
+
+Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir de
+três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
+comprometimento de renda das famílias com o serviço da dívida (SGS~29034), inadimplência
+da carteira de crédito livre PF --- atrasos superiores a 90 dias (SGS~21112) --- e
+participação das modalidades onerosas (cheque especial, SGS~20573; crédito pessoal não
+consignado, SGS~20574; cartão de crédito rotativo, SGS~20587; cartão de crédito parcelado,
+SGS~20588) no total do crédito livre para pessoa física (SGS~20570). Cada componente é
+normalizado pelo método min-max com janela expansiva, a partir de \seriesinicio; o índice
+é exibido a partir de \janelainicio, após o período de aquecimento da janela, e corresponde
+à média simples dos três componentes normalizados, contido no intervalo [0,~1]. Por
+construção, o IDC mede a posição relativa do mês corrente em relação ao histórico observado
+pelo índice. O relatório de divulgação está disponível em
+\url{https://eaesp.fgv.br/producao-intelectual/indice-desconforto-credito-idc}.
+
+Citação recomendada. Gonzalez, L.; Carrijo, M.~L.; Schiozer, R.
+\textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.
+\endgroup
+
+% As figuras ficam em um anexo próprio, uma por página. Assim, nenhuma figura
+% disputa espaço com o corpo textual ou precisa ser reduzida para caber.
+\clearpage
+\section*{Anexo de figuras}
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{index.png}{%
+    \includegraphics[width=\linewidth]{index.png}%
+  }{%
+    \fbox{\rule{0pt}{14cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução do Índice de Desconforto de Crédito (\janelainicio{} a \mesref).}
+  \label{fig:indice}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
+
+\clearpage
+\begin{figure}[H]
+  \centering
+  \IfFileExists{components_raw.png}{%
+    \includegraphics[width=\linewidth]{components_raw.png}%
+  }{%
+    \fbox{\rule{0pt}{17cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref).}
+  \label{fig:componentes}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
+
+\end{document}

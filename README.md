@@ -4,24 +4,24 @@ Autores: Lauro Gonzalez, Matheus L. Carrijo, Rafael Schiozer
 
 Este repositório contém o código e a documentação para a construção de um **índice** que captura o nível de desconforto de crédito das famílias brasileiras.
 
-## Atualização julho/2026 — competência mai/2026
+## Atualização agosto/2026 — competência jun/2026
 
 **O IDC mostra quão perto o desconforto de crédito das famílias está do pior nível já observado no histórico disponível.**
 
 
-Com a divulgação em **julho de 2026** das estatísticas monetárias e de crédito do Banco Central, o último mês calculável do IDC é **mai-2026**, pois a série de comprometimento de renda está disponível somente até esse mês.
+Com a divulgação em **agosto de 2026** das estatísticas monetárias e de crédito do Banco Central, o último mês calculável do IDC é **jun-2026**, pois a série de comprometimento de renda está disponível somente até esse mês.
 
 <!-- IDC_LATEST_START -->
 | Indicador | Valor bruto | Valor normalizado |
 |---|---:|---:|
-| IDC | — | **0,981** |
-| C — comprometimento de renda | 28,5% | 1,000 |
-| I — inadimplência 90+ dias | 7,6% | 1,000 |
-| Q — crédito oneroso no crédito livre PF | 24,8% | 0,944 |
+| IDC | — | **0,959** |
+| C — comprometimento de renda | 28,9% | 1,000 |
+| I — inadimplência 90+ dias | 7,4% | 0,971 |
+| Q — crédito oneroso no crédito livre PF | 24,5% | 0,907 |
 <!-- IDC_LATEST_END -->
 
 
-O valor **0,981** indica que, em mai-2026, o desconforto de crédito permaneceu muito próximo do ponto máximo da janela histórica observada pelo índice. Em relação a abr-2026, quando o IDC marcou **0,990**, houve recuo de **0,009 ponto**, explicado pela queda da participação das modalidades onerosas no crédito livre PF; no mesmo intervalo, o comprometimento de renda e a inadimplência avançaram para seus máximos na amostra.
+O valor **0,959** indica que, em jun-2026, o desconforto de crédito permaneceu próximo do ponto máximo da janela histórica observada pelo índice. Em relação a mai-2026, recalculado em **0,983** com a mesma safra de dados, houve recuo de **0,024 ponto**: as quedas da inadimplência e da participação das modalidades onerosas no crédito livre PF mais do que compensaram o avanço do comprometimento de renda para um novo máximo na amostra.
 
 É importante destacar que o IDC não é uma medida absoluta de endividamento; ele indica a posição do mês corrente em relação ao histórico disponível.
 
@@ -30,10 +30,10 @@ O valor **0,981** indica que, em mai-2026, o desconforto de crédito permaneceu 
 <!-- IDC_STATS_START -->
 | Estatística | Valor |
 |---|---:|
-| Último dado | mai-2026 |
-| Atual | 0,981 |
-| Média | 0,519 |
-| Desvio padrão | 0,292 |
+| Último dado | jun-2026 |
+| Atual | 0,959 |
+| Média | 0,522 |
+| Desvio padrão | 0,293 |
 | Mínimo | 0,013 |
 | Máximo | 1,000 |
 <!-- IDC_STATS_END -->
@@ -138,7 +138,7 @@ onde:
 
 O horizonte efetivo do índice é determinado pela série mais curta disponível na planilha mensal do Banco Central — em geral, a SGS 29034 (comprometimento de renda), que é publicada com maior defasagem que as demais. A planilha pode conter observações mais recentes para algumas séries, mas o índice usa apenas os meses em que os três componentes C, I e Q estão disponíveis. O índice é exibido a partir de **jan-2014**, após ~34 meses de aquecimento da janela expansiva.
 
-Assim, a competência da divulgação do Banco Central não necessariamente coincide com o último mês calculável do IDC. Por exemplo, a divulgação **202607** traz a série de comprometimento de renda até **mai-2026** e as demais séries usadas no índice até **jun-2026**; como o IDC exige todos os componentes no mesmo mês, o índice calculado com essa divulgação termina em **mai-2026**.
+Assim, a competência da divulgação do Banco Central não necessariamente coincide com o último mês calculável do IDC. Por exemplo, a divulgação **202608** traz a série de comprometimento de renda até **jun-2026** e as demais séries usadas no índice até **jul-2026**; como o IDC exige todos os componentes no mesmo mês, o índice calculado com essa divulgação termina em **jun-2026**.
 
 ## 5. Como Reproduzir
 
@@ -153,15 +153,15 @@ source .venv/bin/activate
 **Atualização mensal dos dados do Banco Central** a partir do diretório raiz do projeto:
 
 ```bash
-python -m src.download_bcb_release 202607
+python -m src.download_bcb_release 202608
 ```
 
-O comando acima baixa a tabela XLSX e o PDF do relatório mensal do Banco Central para `data/raw/202607/`. Por padrão, arquivos existentes não são sobrescritos; use `--overwrite` para forçar novo download.
+O comando acima baixa a tabela XLSX e o PDF do relatório mensal do Banco Central para `data/raw/202608/`. Por padrão, arquivos existentes não são sobrescritos; use `--overwrite` para forçar novo download.
 
 Se o ambiente local não conseguir alcançar o site do BCB por uma falha de rede que não seja HTTP 404, o mesmo arquivo oficial pode ser obtido por um runner do GitHub Actions:
 
 ```bash
-python -m src.download_bcb_via_github 202607
+python -m src.download_bcb_via_github 202608
 ```
 
 Esse fallback requer `gh auth status` válido e o workflow `fetch-bcb-release.yml` disponível na branch `main`. O runner baixa os arquivos do BCB, valida as assinaturas XLSX/PDF e os devolve como artefato antes de a execução local do índice continuar.
@@ -169,7 +169,7 @@ Esse fallback requer `gh auth status` válido e o workflow `fetch-bcb-release.ym
 Antes de executar o índice, audite eventuais revisões da divulgação atual contra a imediatamente anterior:
 
 ```bash
-python -m src.compare_releases 202607
+python -m src.compare_releases 202608
 ```
 
 **Execução do índice** a partir do diretório raiz do projeto:
@@ -184,9 +184,9 @@ Cada nota mensal é publicada em três formatos com o mesmo conteúdo: fonte LaT
 
 ```bash
 python -m src.build_report_docx \
-  outputs/report/update-202607/idc-update-202607.tex \
-  outputs/report/update-202607/idc-update-202607.docx \
-  --assets-dir outputs/report/update-202607 \
+  outputs/report/update-202608/idc-update-202608.tex \
+  outputs/report/update-202608/idc-update-202608.docx \
+  --assets-dir outputs/report/update-202608 \
   --require-filled
 ```
 
@@ -200,9 +200,9 @@ O processo mensal completo, inclusive a compilação e a revisão visual do PDF 
 │   │   ├── 202603/
 │   │   │   ├── 202603_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
 │   │   │   └── 202603_Texto_de_estatisticas_monetarias_e_de_credito.pdf
-│   │   └── 202607/
-│   │       ├── 202607_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
-│   │       └── 202607_Texto_de_estatisticas_monetarias_e_de_credito.pdf
+│   │   └── 202608/
+│   │       ├── 202608_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx
+│   │       └── 202608_Texto_de_estatisticas_monetarias_e_de_credito.pdf
 │   └── processed/
 │       ├── series_raw.csv
 │       ├── components_raw.csv
@@ -247,9 +247,9 @@ O processo mensal completo, inclusive a compilação e a revisão visual do PDF 
 
 **Relatório (`outputs/report/`):**
 
-- **`update-202607/idc-update-202607.tex`** — fonte LaTeX preenchida da nota mensal.
-- **`update-202607/idc-update-202607.pdf`** — nota mensal compilada e verificada.
-- **`update-202607/idc-update-202607.docx`** — versão Word editável, gerada da fonte LaTeX e verificada por renderização.
+- **`update-202608/idc-update-202608.tex`** — fonte LaTeX preenchida da nota mensal.
+- **`update-202608/idc-update-202608.pdf`** — nota mensal compilada e verificada.
+- **`update-202608/idc-update-202608.docx`** — versão Word editável, gerada da fonte LaTeX e verificada por renderização.
 - **`template-docx/template.docx`** — espelho Word editável do template LaTeX, regenerado por `src.build_report_docx`.
 
 ## 8. Estrutura e Fontes de Dados

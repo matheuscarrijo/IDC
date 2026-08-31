@@ -8,7 +8,13 @@ from docx import Document
 from docx.shared import Mm
 from PIL import Image
 
-from src.build_report_docx import _add_figure, _parse_report, _parse_table, build_docx
+from src.build_report_docx import (
+    _add_figure,
+    _paragraph_fragments,
+    _parse_report,
+    _parse_table,
+    build_docx,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +27,19 @@ W = f"{{{W_NS}}}"
 
 
 class BuildReportDocxTests(unittest.TestCase):
+    def test_paragraph_parser_discards_layout_only_commands(self):
+        fragments = _paragraph_fragments(
+            """\\begingroup\\tiny
+            \\setstretch{1.15}
+
+            Texto com \\textbf{0,959}.
+
+            \\endgroup
+            \\clearpage"""
+        )
+
+        self.assertEqual(fragments, [r"Texto com \textbf{0,959}."])
+
     def test_parser_reads_the_supported_idc_template(self):
         report = _parse_report(TEMPLATE_TEX.read_text(encoding="utf-8"))
 
@@ -97,6 +116,7 @@ class BuildReportDocxTests(unittest.TestCase):
             visible_text = "\n".join(paragraph.text for paragraph in document.paragraphs)
             self.assertIn("Índice de Desconforto de Crédito", visible_text)
             self.assertIn("Trajetória do índice", visible_text)
+            self.assertAlmostEqual(document.styles["IDC Notes"].font.size.pt, 6.5)
 
     def test_heading_numbering_is_native_decimal_and_word_compatible(self):
         with tempfile.TemporaryDirectory() as directory:
