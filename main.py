@@ -1,5 +1,11 @@
+import os
 from pathlib import Path
+import shutil
+import tempfile
+from zipfile import ZipFile
+
 import pandas as pd
+from openpyxl.styles import Alignment, Font, PatternFill
 
 from src.build_index import build_components, build_index
 from src.load_data import load_raw_series
@@ -52,13 +58,65 @@ def main() -> None:
     components_excel.index = components_excel.index.strftime("%Y-%m-%d")
     index_excel.index = index_excel.index.strftime("%Y-%m-%d")
 
-    with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
-        index_excel.to_excel(writer, sheet_name="IDC e Normalizados")
-        components_excel.to_excel(writer, sheet_name="Componentes Brutos")
+    _write_excel_safely(index_excel, components_excel, excel_path)
 
     _update_readme(components, index_df)
     plot_all(components, index_df)
     _print_summary(index_df)
+
+
+def _write_excel_safely(index_excel, components_excel, excel_path: Path) -> None:
+    """Build the ZIP-based workbook off-volume, then replace it atomically."""
+    excel_path.parent.mkdir(parents=True, exist_ok=True)
+    staged_path = excel_path.with_suffix(f"{excel_path.suffix}.tmp")
+    with tempfile.NamedTemporaryFile(prefix="idc-data-", suffix=".xlsx", delete=False) as tmp:
+        temp_path = Path(tmp.name)
+
+    try:
+        with pd.ExcelWriter(temp_path, engine="openpyxl") as writer:
+            index_excel.to_excel(writer, sheet_name="IDC e Normalizados")
+            components_excel.to_excel(writer, sheet_name="Componentes Brutos")
+            _format_excel_sheet(
+                writer.sheets["IDC e Normalizados"],
+                column_widths={"A": 13, "B": 16, "C": 16, "D": 16, "E": 16},
+                number_formats={"B": "0.000000", "C": "0.000000", "D": "0.000000", "E": "0.000000"},
+            )
+            _format_excel_sheet(
+                writer.sheets["Componentes Brutos"],
+                column_widths={"A": 13, "B": 14, "C": 14, "D": 16},
+                number_formats={"B": "0.0", "C": "0.0", "D": "0.000000"},
+            )
+
+        with ZipFile(temp_path) as workbook:
+            corrupt_member = workbook.testzip()
+        if corrupt_member is not None:
+            raise RuntimeError(f"Planilha consolidada inválida: {corrupt_member}")
+
+        shutil.copyfile(temp_path, staged_path)
+        os.replace(staged_path, excel_path)
+    finally:
+        temp_path.unlink(missing_ok=True)
+        staged_path.unlink(missing_ok=True)
+
+
+def _format_excel_sheet(worksheet, column_widths: dict[str, int], number_formats: dict[str, str]) -> None:
+    """Apply readable, stable formatting to a generated data worksheet."""
+    header_fill = PatternFill(fill_type="solid", fgColor="1F4E78")
+    header_font = Font(color="FFFFFF", bold=True)
+    for cell in worksheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    worksheet.row_dimensions[1].height = 22
+    worksheet.freeze_panes = "A2"
+    worksheet.auto_filter.ref = worksheet.dimensions
+
+    for column, width in column_widths.items():
+        worksheet.column_dimensions[column].width = width
+    for column, number_format in number_formats.items():
+        for cell in worksheet[column][1:]:
+            cell.number_format = number_format
 
 
 def _print_summary(index_df) -> None:

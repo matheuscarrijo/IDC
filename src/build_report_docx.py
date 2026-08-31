@@ -124,7 +124,22 @@ def _plain_latex(source: str) -> str:
 
 
 def _paragraph_fragments(source: str) -> list[str]:
-    source = _strip_comments(source).strip()
+    source = _strip_comments(source)
+    # Layout-only LaTeX commands have no textual Word equivalent. Removing
+    # them here also avoids empty paragraphs that can alter pagination.
+    source = re.sub(r"\\(?:setstretch|linespread)\s*\{[^{}]*\}", "", source)
+    source = re.sub(
+        r"\\fontsize\s*\{[^{}]*\}\s*\{[^{}]*\}(?:\s*\\selectfont)?",
+        "",
+        source,
+    )
+    source = re.sub(
+        r"\\(?:begingroup|endgroup|tiny|scriptsize|footnotesize|small|"
+        r"normalsize|large|Large|LARGE|huge|Huge|selectfont|clearpage|"
+        r"newpage|pagebreak|onehalfspacing|singlespacing)\b",
+        "",
+        source,
+    ).strip()
     if not source:
         return []
     return [_collapse_source(part) for part in re.split(r"\n\s*\n", source) if part.strip()]
@@ -282,7 +297,7 @@ def _add_body_paragraph(document, source: str, *, first_line: bool = True):
 def _add_note_paragraph(document, source: str, *, first_line: bool = True):
     paragraph = document.add_paragraph(style="IDC Notes")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    paragraph.paragraph_format.line_spacing = Pt(13)
+    paragraph.paragraph_format.line_spacing = Pt(8)
     paragraph.paragraph_format.space_before = Pt(0)
     paragraph.paragraph_format.space_after = Pt(0)
     paragraph.paragraph_format.first_line_indent = Mm(5.3) if first_line else Mm(0)
@@ -523,11 +538,11 @@ def _configure_styles(document) -> None:
     else:
         notes_style = styles["IDC Notes"]
     notes_style.font.name = BODY_FONT
-    notes_style.font.size = Pt(9.5)
+    notes_style.font.size = Pt(6.5)
     notes_style.font.color.rgb = BLACK
     notes_style._element.rPr.rFonts.set(qn("w:ascii"), BODY_FONT)
     notes_style._element.rPr.rFonts.set(qn("w:hAnsi"), BODY_FONT)
-    notes_style.paragraph_format.line_spacing = Pt(13)
+    notes_style.paragraph_format.line_spacing = Pt(8)
     notes_style.paragraph_format.space_before = Pt(0)
     notes_style.paragraph_format.space_after = Pt(0)
 
@@ -1040,7 +1055,9 @@ def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = N
     _section_heading(document, report["next_title"], heading_num_id)
     for index, paragraph in enumerate(report["next_update"]):
         _add_body_paragraph(document, paragraph, first_line=index > 0)
-    _section_heading(document, "Notas", heading_num_id, numbered=False)
+    notes_heading = _section_heading(document, "Notas", heading_num_id, numbered=False)
+    notes_heading.paragraph_format.space_before = Pt(12)
+    notes_heading.paragraph_format.space_after = Pt(4)
     for index, paragraph in enumerate(report["notes"]):
         _add_note_paragraph(document, paragraph, first_line=index > 0)
 
