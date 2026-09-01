@@ -13,7 +13,7 @@ import argparse
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional
 
 import numpy as np
 import pandas as pd
@@ -33,6 +33,10 @@ SERIES_LABELS = {
 }
 
 IDC_PUBLICATION_START = pd.Timestamp("2014-01-01")
+
+# This is an editorial disclosure threshold, not an audit tolerance.  The audit
+# above and below continues to use ``atol`` to retain every effective revision.
+PUBLIC_REVISION_MATERIALITY_THRESHOLD = 0.010
 
 
 @dataclass(frozen=True)
@@ -81,6 +85,132 @@ class ReleaseComparison:
         payload = asdict(self)
         payload["has_revisions"] = self.has_revisions
         return payload
+
+
+@dataclass(frozen=True)
+class RevisionMagnitudeFacts:
+    """Quantitative facts used by the public-disclosure decision.
+
+    ``largest_current_absolute_delta`` describes the consecutive-vintage audit.
+    ``largest_cumulative_absolute_delta`` describes net changes measured from the
+    last vintage whose revisions were publicly disclosed.  Keeping the two
+    values separate prevents the editorial rule from weakening the audit.
+    """
+
+    threshold: float
+    largest_current_absolute_delta: float
+    largest_cumulative_absolute_delta: float
+    effective_absolute_delta: float
+    meets_threshold: bool
+
+
+@dataclass(frozen=True)
+class RevisionEditorialContext:
+    """Editorial facts that cannot be inferred from two BCB workbooks alone.
+
+    A routine revision requires both the quantitative threshold and
+    ``affects_relevant_element``.  The remaining fields are explicit qualitative
+    overrides: any one of them makes disclosure material independently of the
+    numeric threshold.
+    """
+
+    affects_relevant_element: bool = False
+    reverses_sign: bool = False
+    changes_record: bool = False
+    invalidates_published_statement: bool = False
+    changes_idc_methodology: bool = False
+    changes_source_or_coverage: bool = False
+    corrects_relevant_error: bool = False
+
+    @property
+    def qualitative_overrides(self) -> tuple[str, ...]:
+        candidates = (
+            ("reverses_sign", self.reverses_sign),
+            ("changes_record", self.changes_record),
+            (
+                "invalidates_published_statement",
+                self.invalidates_published_statement,
+            ),
+            ("changes_idc_methodology", self.changes_idc_methodology),
+            ("changes_source_or_coverage", self.changes_source_or_coverage),
+            ("corrects_relevant_error", self.corrects_relevant_error),
+        )
+        return tuple(name for name, active in candidates if active)
+
+
+@dataclass(frozen=True)
+class RevisionMaterialityDecision:
+    """Result of applying the editorial policy to quantitative audit facts."""
+
+    quantitative: RevisionMagnitudeFacts
+    editorial: RevisionEditorialContext
+    routine_rule_met: bool
+    qualitative_overrides: tuple[str, ...]
+    is_publicly_material: bool
+
+
+def quantify_revision_magnitude(
+    comparison: ReleaseComparison,
+    *,
+    cumulative_idc_deltas_since_last_disclosure: Optional[Mapping[str, float]] = None,
+    threshold: float = PUBLIC_REVISION_MATERIALITY_THRESHOLD,
+) -> RevisionMagnitudeFacts:
+    """Measure revision magnitude without making an editorial judgment.
+
+    ``cumulative_idc_deltas_since_last_disclosure`` maps each affected IDC date
+    to its *net* delta between the last publicly disclosed vintage and the
+    current vintage.  Callers should therefore pass accumulated totals, rather
+    than individual monthly increments.  The current consecutive-vintage audit
+    remains part of the calculation even when no cumulative mapping is supplied.
+    """
+
+    if not np.isfinite(threshold) or threshold <= 0:
+        raise ValueError("O limiar de materialidade deve ser finito e positivo")
+
+    current_deltas = [comparison.idc_revision]
+    current_deltas.extend(revision.delta for revision in comparison.idc_revisions)
+    if not np.isfinite(current_deltas).all():
+        raise ValueError("As revisões correntes do IDC devem ser finitas")
+    largest_current = max((abs(delta) for delta in current_deltas), default=0.0)
+
+    cumulative_deltas = tuple(
+        (cumulative_idc_deltas_since_last_disclosure or {}).values()
+    )
+    if not np.isfinite(cumulative_deltas).all():
+        raise ValueError("As revisões acumuladas do IDC devem ser finitas")
+    largest_cumulative = max(
+        (abs(delta) for delta in cumulative_deltas),
+        default=0.0,
+    )
+
+    effective_delta = max(largest_current, largest_cumulative)
+    return RevisionMagnitudeFacts(
+        threshold=float(threshold),
+        largest_current_absolute_delta=float(largest_current),
+        largest_cumulative_absolute_delta=float(largest_cumulative),
+        effective_absolute_delta=float(effective_delta),
+        meets_threshold=effective_delta >= threshold,
+    )
+
+
+def assess_revision_materiality(
+    quantitative: RevisionMagnitudeFacts,
+    editorial: Optional[RevisionEditorialContext] = None,
+) -> RevisionMaterialityDecision:
+    """Apply the strict public-disclosure rule to precomputed audit facts."""
+
+    editorial = editorial or RevisionEditorialContext()
+    routine_rule_met = (
+        quantitative.meets_threshold and editorial.affects_relevant_element
+    )
+    qualitative_overrides = editorial.qualitative_overrides
+    return RevisionMaterialityDecision(
+        quantitative=quantitative,
+        editorial=editorial,
+        routine_rule_met=routine_rule_met,
+        qualitative_overrides=qualitative_overrides,
+        is_publicly_material=routine_rule_met or bool(qualitative_overrides),
+    )
 
 
 def _period_from_path(path: Path) -> str:
@@ -241,6 +371,61 @@ def compare_releases(period: str, data_dir: Path = DATA_DIR) -> ReleaseCompariso
         previous_period,
         current_period,
     )
+
+
+def compare_release_vintages(
+    baseline_period: str,
+    current_period: str,
+    data_dir: Path = DATA_DIR,
+) -> ReleaseComparison:
+    """Compare two explicitly selected vintages instead of consecutive ones.
+
+    This is the operational path for measuring net revisions since the last
+    public revision disclosure: use that disclosed vintage as ``baseline_period``
+    and the release being prepared as ``current_period``.
+    """
+
+    if baseline_period >= current_period:
+        raise ValueError("A safra-base deve ser anterior à safra atual")
+
+    tables = _release_tables(data_dir)
+    paths_by_period: dict[str, Path] = {}
+    for period, path in tables:
+        paths_by_period[period] = path
+
+    missing_periods = [
+        period
+        for period in (baseline_period, current_period)
+        if period not in paths_by_period
+    ]
+    if missing_periods:
+        missing = ", ".join(missing_periods)
+        raise FileNotFoundError(
+            f"Planilha do BCB não encontrada para {missing} em {data_dir}"
+        )
+
+    return compare_raw_vintages(
+        load_raw_series(paths_by_period[baseline_period]),
+        load_raw_series(paths_by_period[current_period]),
+        baseline_period,
+        current_period,
+    )
+
+
+def idc_revision_deltas_by_date(
+    comparison: ReleaseComparison,
+) -> dict[str, float]:
+    """Return net IDC deltas keyed by competence for materiality accumulation.
+
+    When ``comparison`` comes from :func:`compare_release_vintages`, the result
+    can be passed directly to ``cumulative_idc_deltas_since_last_disclosure`` in
+    :func:`quantify_revision_magnitude`.
+    """
+
+    return {
+        revision.date: revision.delta
+        for revision in comparison.idc_revisions
+    }
 
 
 def _format_number(value: Optional[float]) -> str:
