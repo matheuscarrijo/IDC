@@ -147,6 +147,7 @@
 % =============================================================================
 
 % --- Capa ---------------------------------------------------------------------
+\hypersetup{pageanchor=false}
 \begin{titlepage}
   \noindent\hfill\includegraphics[width=79mm]{logo.png}
 
@@ -173,6 +174,7 @@
     \reportdate
   \end{center}
 \end{titlepage}
+\hypersetup{pageanchor=true}
 \thispagestyle{firstpage}
 
 % =============================================================================
@@ -252,50 +254,6 @@ Em conjunto, os dados sinalizam alívio moderado do desconforto agregado em
 entre os níveis mais elevados da série, com C no máximo histórico. O indicador
 mede posição relativa no histórico, e não uma medida absoluta de endividamento.
 
-\section{Revisões dos dados}
-
-A comparação das divulgações \textbf{202607} e \textbf{202608} identificou
-\textbf{19} alterações em observações históricas. A inadimplência foi revista em
-\textbf{mai-2026} e \textbf{jun-2026}; o crédito livre PF total, em
-\textbf{nov-2025}, \textbf{dez-2025}, \textbf{jan-2026}, \textbf{fev-2026},
-\textbf{mar-2026}, \textbf{mai-2026} e \textbf{jun-2026}; cheque especial, em
-\textbf{fev-2026}, \textbf{mai-2026} e \textbf{jun-2026}; crédito pessoal não
-consignado, em \textbf{nov-2025}, \textbf{dez-2025}, \textbf{fev-2026},
-\textbf{mai-2026} e \textbf{jun-2026}; e cartões rotativo e parcelado, em
-\textbf{jun-2026}. C não foi revisto.
-
-A Tabela~\ref{tab:revisoes-idc} apresenta todas as seis competências cujo IDC
-mudou; alterações brutas sem efeito no índice não aparecem na tabela.
-
-\begin{table}[htbp]
-  \centering
-  \caption{IDC alterado pela revisão dos dados --- divulgações 202607 e 202608.}
-  \label{tab:revisoes-idc}
-  \begin{tabular}{lrrr}
-    \toprule
-    Competência & IDC na 202607 & IDC na 202608 & Revisão \\
-    \midrule
-    nov-2025 & 0,961223 & 0,961093 & -0,000130 \\
-    dez-2025 & 0,962843 & 0,962738 & -0,000105 \\
-    jan-2026 & 0,995975 & 0,995927 & -0,000048 \\
-    mar-2026 & 0,960299 & 0,960371 & +0,000072 \\
-    abr-2026 & 0,990355 & 0,990431 & +0,000077 \\
-    mai-2026 & 0,981232 & 0,983233 & +0,002001 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito,
-divulgações 202607 e 202608), elaboração própria.}
-
-A maior revisão ocorreu em \textbf{mai-2026}, base da comparação mensal: I passou
-de \textbf{7,6\%} para \textbf{7,5\%}, embora permanecesse em \textbf{1,000}
-normalizado; Q passou de \textbf{24,761307\%} para \textbf{24,800783\%}, e seu
-valor normalizado, de \textbf{0,943695} para \textbf{0,949699}; C não mudou.
-Assim, a variação mensal homogênea na safra \textbf{202608} é de
-\textbf{-0,024030~ponto}; ante o valor de maio publicado na divulgação anterior,
-a diferença seria de \textbf{-0,022029~ponto}. Esta nota usa a primeira comparação.
-
 \section{Trajetória do índice}
 
 A Figura~\ref{fig:indice} mostra que, após atingir \textbf{1,000} em
@@ -311,7 +269,7 @@ A próxima atualização é esperada para \proxdivulgacao; o IDC será estendido
 
 \section*{Notas}
 
-\begingroup\tiny
+\begingroup\footnotesize
 
 Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir de
 três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
@@ -326,6 +284,11 @@ normalizado pelo método min-max com janela expansiva, a partir de \seriesinicio
 construção, o IDC mede a posição relativa do mês corrente em relação ao histórico observado
 pelo índice. O relatório de divulgação está disponível em
 \url{https://eaesp.fgv.br/producao-intelectual/indice-desconforto-credito-idc}.
+
+Revisões dos dados. Os valores históricos do IDC são recalculados a cada edição
+com a safra mais recente dos dados do Banco Central. Revisões com efeito material
+sobre o índice ou sua interpretação são descritas no relatório; a série
+disponibilizada incorpora todas as revisões identificadas.
 
 Citação recomendada. Gonzalez, L.; Carrijo, M.~L.; Schiozer, R.
 \textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.

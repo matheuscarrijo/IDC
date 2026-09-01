@@ -46,6 +46,7 @@
 \usepackage{array}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{float}
 
 \captionsetup[figure]{
   format=plain, labelformat=simple, labelsep=period,
@@ -141,6 +142,7 @@
 % =============================================================================
 
 % --- Capa ---------------------------------------------------------------------
+\hypersetup{pageanchor=false}
 \begin{titlepage}
   \noindent\hfill\includegraphics[width=79mm]{logo.png}
 
@@ -167,6 +169,7 @@
     \reportdate
   \end{center}
 \end{titlepage}
+\hypersetup{pageanchor=true}
 \thispagestyle{firstpage}
 
 % =============================================================================
@@ -250,6 +253,41 @@ famílias em termos relativos, com piora mensal associada principalmente à inad
 e à composição do crédito. O IDC mede posição relativa no histórico observado, e não
 uma medida absoluta de endividamento.
 
+\section{Revisões dos dados}
+
+A safra \textbf{202606} incorporou a revisão ordinária anual das estatísticas
+de crédito do Banco Central. Ante a safra \textbf{202605}, a auditoria encontrou
+\textbf{1.056} alterações nos insumos e mudanças no IDC em \textbf{146}
+competências de \textbf{jan-2014} a \textbf{mar-2026}; \textbf{83} atingiram
+ao menos \textbf{0,010 ponto}. O efeito material sobre a trajetória histórica
+justifica o destaque nesta nota.
+
+A Tabela~\ref{tab:revisoes-idc} sintetiza os dois extremos da revisão e
+\textbf{mar-2026}, base da comparação mensal. Os valores públicos têm três
+casas decimais; o registro técnico preserva a precisão integral.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Síntese dos efeitos da revisão anual --- divulgações 202605 e 202606.}
+  \label{tab:revisoes-idc}
+  \begin{tabular}{lrrr}
+    \toprule
+    Competência & IDC na 202605 & IDC na 202606 & Revisão \\
+    \midrule
+    jan-2014 & 0,249 & 0,181 & -0,068 \\
+    jan-2017 & 0,366 & 0,423 & +0,057 \\
+    mar-2026 & 0,954 & 0,960 & +0,007 \\
+    \bottomrule
+  \end{tabular}
+  \fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito,
+  divulgações 202605 e 202606), elaboração própria.}
+\end{table}
+
+Em \textbf{mar-2026}, o IDC passou de \textbf{0,954} para \textbf{0,960}.
+A alta homogênea de abril ante março na safra \textbf{202606} é de
+\textbf{+0,026~ponto}, contra \textbf{+0,033~ponto} se comparada ao valor de
+março impresso na nota anterior. Adota-se aqui a comparação homogênea.
+
 \section{Trajetória do índice}
 
 A Figura~\ref{fig:indice} apresenta a evolução do IDC desde \janelainicio{} e situa a
@@ -258,32 +296,7 @@ as séries brutas de comprometimento de renda, inadimplência e qualidade do cr�
 permitindo relacionar a leitura agregada do IDC aos movimentos observados em cada
 componente.
 
-\begin{figure}[htbp]
-  \centering
-  \IfFileExists{index.png}{%
-    \includegraphics[width=\linewidth]{index.png}%
-  }{%
-    \fbox{\rule{0pt}{6cm}\rule{\linewidth}{0pt}}%
-  }
-  \caption{Evolução do Índice de Desconforto de Crédito (\janelainicio{} a \mesref).}
-  \label{fig:indice}
-  \fonte{BCB, elaboração própria.}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \IfFileExists{components_raw.png}{%
-    \includegraphics[width=\linewidth]{components_raw.png}%
-  }{%
-    \fbox{\rule{0pt}{6cm}\rule{\linewidth}{0pt}}%
-  }
-  \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref).}
-  \label{fig:componentes}
-  \fonte{BCB, elaboração própria.}
-\end{figure}
-
 \clearpage
-
 \section{Próxima atualização}
 
 A próxima atualização do IDC está prevista para a divulgação seguinte das Estatísticas
@@ -292,6 +305,8 @@ O índice será estendido para \mesproximo{} caso a série de comprometimento de
 famílias (SGS~29034) avance para essa competência.
 
 \section*{Notas}
+
+\begingroup\footnotesize
 
 Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir de
 três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
@@ -307,7 +322,43 @@ construção, o IDC mede a posição relativa do mês corrente em relação ao h
 pelo índice. O relatório de divulgação está disponível em
 \url{https://eaesp.fgv.br/producao-intelectual/indice-desconforto-credito-idc}.
 
+Revisões dos dados. Os valores históricos do IDC são recalculados a cada edição
+com a safra mais recente dos dados do Banco Central. Revisões com efeito material
+sobre o índice ou sua interpretação são descritas no relatório; a série
+disponibilizada incorpora todas as revisões identificadas.
+
 Citação recomendada. Gonzalez, L.; Carrijo, M.~L.; Schiozer, R.
 \textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.
+\endgroup
+
+\clearpage
+\section*{Anexo de figuras}
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{index.png}{%
+    \includegraphics[width=\linewidth]{index.png}%
+  }{%
+    \fbox{\rule{0pt}{14cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução do Índice de Desconforto de Crédito (\janelainicio{} a \mesref).}
+  \label{fig:indice}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
+
+\clearpage
+\begin{figure}[H]
+  \centering
+  \IfFileExists{components_raw.png}{%
+    \includegraphics[width=\linewidth]{components_raw.png}%
+  }{%
+    \fbox{\rule{0pt}{17cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref).}
+  \label{fig:componentes}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
 
 \end{document}

@@ -33,6 +33,12 @@ PLACEHOLDER_RED = RGBColor(155, 35, 35)
 FIGURE_WIDTH_MM = 150.0
 FIGURE_MAX_HEIGHT_MM = {1: 150.0, 2: 180.0}
 FIGURE_PLACEHOLDER_HEIGHT_MM = {1: 140.0, 2: 170.0}
+NOTES_MIN_FONT_SIZE_PT = 9.0
+NOTES_FONT_SIZE_PT = 9.5
+NOTES_LINE_SPACING_PT = 13.0
+REVISION_POLICY_NOTE_PREFIX = (
+    "Revisões dos dados. Os valores históricos do IDC são recalculados a cada edição"
+)
 
 
 def _extract_group(source: str, opening_brace: int) -> tuple[str, int]:
@@ -143,6 +149,71 @@ def _paragraph_fragments(source: str) -> list[str]:
     if not source:
         return []
     return [_collapse_source(part) for part in re.split(r"\n\s*\n", source) if part.strip()]
+
+
+def _validate_notes_typography(source: str) -> None:
+    """Reject report-specific overrides that make the Notes section unreadable."""
+    cleaned = _strip_comments(source)
+    cleaned = _expand_macros(cleaned, _extract_macros(cleaned))
+    notes_marker = cleaned.find(r"\section*{Notas}")
+    annex_marker = cleaned.find(r"\section*{Anexo de figuras}", notes_marker)
+    if notes_marker < 0 or annex_marker < 0:
+        return
+
+    notes_source = cleaned[notes_marker:annex_marker]
+    shrinking_command = re.search(
+        r"\\(?:(?P<command>tiny|scriptsize)\b|begin\s*\{\s*(?P<environment>tiny|scriptsize)\s*\})",
+        notes_source,
+    )
+    if shrinking_command:
+        size_name = shrinking_command.group("command") or shrinking_command.group("environment")
+        raise ValueError(
+            "The Notes section must use at least 9 pt; "
+            f"\\{size_name} is not allowed"
+        )
+
+    for match in re.finditer(r"\\fontsize\s*\{\s*([^{}]+?)\s*\}", notes_source):
+        value = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)(?:pt)?", match.group(1))
+        if value is None or float(value.group(1)) < NOTES_MIN_FONT_SIZE_PT:
+            raise ValueError(
+                "The Notes section must use at least "
+                f"{NOTES_MIN_FONT_SIZE_PT:g} pt; found {match.group(1)}"
+            )
+
+
+def _validate_annex_pagination(source: str) -> None:
+    """Require a fresh annex page and one fixed full-width figure per page."""
+    cleaned = _strip_comments(source)
+    cleaned = _expand_macros(cleaned, _extract_macros(cleaned))
+    annex_marker = cleaned.find(r"\section*{Anexo de figuras}")
+    if annex_marker < 0:
+        return
+
+    if re.search(r"\\clearpage\s*$", cleaned[:annex_marker]) is None:
+        raise ValueError("Anexo de figuras must start on a fresh page using \\clearpage")
+
+    document_end = cleaned.find(r"\end{document}", annex_marker)
+    annex_source = cleaned[annex_marker:document_end]
+    figures = list(re.finditer(
+        r"\\begin\{figure\}\s*\[H\].*?\\end\{figure\}",
+        annex_source,
+        re.S,
+    ))
+    if len(figures) != 2:
+        raise ValueError("Anexo de figuras must contain exactly two [H] figures")
+    between_figures = annex_source[figures[0].end():figures[1].start()]
+    if re.search(r"\\clearpage", between_figures) is None:
+        raise ValueError("Each annex figure must start on a fresh page using \\clearpage")
+
+
+def _validate_public_revision_table(rows: list[list[str]]) -> None:
+    """Keep public revision values aligned with the IDC's three-decimal precision."""
+    number = re.compile(r"^[+-]?[0-9]+,[0-9]{3}$")
+    for row in rows[1:]:
+        if len(row) != 4 or any(number.fullmatch(value) is None for value in row[1:]):
+            raise ValueError(
+                "The public IDC revision table must use three decimal places"
+            )
 
 
 def _set_run_font(run, name: str = BODY_FONT, size: float | None = None) -> None:
@@ -297,7 +368,7 @@ def _add_body_paragraph(document, source: str, *, first_line: bool = True):
 def _add_note_paragraph(document, source: str, *, first_line: bool = True):
     paragraph = document.add_paragraph(style="IDC Notes")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    paragraph.paragraph_format.line_spacing = Pt(8)
+    paragraph.paragraph_format.line_spacing = Pt(NOTES_LINE_SPACING_PT)
     paragraph.paragraph_format.space_before = Pt(0)
     paragraph.paragraph_format.space_after = Pt(0)
     paragraph.paragraph_format.first_line_indent = Mm(5.3) if first_line else Mm(0)
@@ -538,11 +609,11 @@ def _configure_styles(document) -> None:
     else:
         notes_style = styles["IDC Notes"]
     notes_style.font.name = BODY_FONT
-    notes_style.font.size = Pt(6.5)
+    notes_style.font.size = Pt(NOTES_FONT_SIZE_PT)
     notes_style.font.color.rgb = BLACK
     notes_style._element.rPr.rFonts.set(qn("w:ascii"), BODY_FONT)
     notes_style._element.rPr.rFonts.set(qn("w:hAnsi"), BODY_FONT)
-    notes_style.paragraph_format.line_spacing = Pt(8)
+    notes_style.paragraph_format.line_spacing = Pt(NOTES_LINE_SPACING_PT)
     notes_style.paragraph_format.space_before = Pt(0)
     notes_style.paragraph_format.space_after = Pt(0)
 
@@ -733,6 +804,8 @@ def _extract_figure(figure_block: str, number: int) -> dict[str, str | int]:
 
 
 def _parse_report(source: str) -> dict:
+    _validate_notes_typography(source)
+    _validate_annex_pagination(source)
     macros = _extract_macros(source)
     expanded = _expand_macros(source, macros)
 
@@ -801,6 +874,7 @@ def _parse_report(source: str) -> dict:
                 expected_columns=4,
                 table_name="The IDC revision table",
             )
+            _validate_public_revision_table(revision_table_rows)
             revisions_intro = _paragraph_fragments(expanded[revisions_start:revision_table_start])
             after_revision_table = revision_table_end
             external_revision_source = _optional_command_argument(
@@ -825,6 +899,13 @@ def _parse_report(source: str) -> dict:
     next_update = _paragraph_fragments(expanded[next_start:notes_marker])
     notes_start = notes_marker + len(r"\section*{Notas}")
     notes = _paragraph_fragments(expanded[notes_start:annex_marker])
+    revision_policy_note_count = sum(
+        note.startswith(REVISION_POLICY_NOTE_PREFIX) for note in notes
+    )
+    if revision_policy_note_count != 1:
+        raise ValueError(
+            "Notes must contain the fixed IDC revision-policy note exactly once"
+        )
 
     annex_start = annex_marker + len(r"\section*{Anexo de figuras}")
     document_end = expanded.find(r"\end{document}", annex_start)
@@ -979,7 +1060,7 @@ def _add_figure(document, figure: dict, assets_dir: Path) -> None:
 
 def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = None, require_filled: bool = False) -> None:
     source = tex_path.read_text(encoding="utf-8")
-    if require_filled and r"\placeholder{" in source:
+    if require_filled and r"\placeholder{" in _strip_comments(source):
         raise ValueError("Filled monthly reports cannot contain \\placeholder{...} commands")
     report = _parse_report(source)
     macros = report["macros"]
@@ -1058,11 +1139,16 @@ def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = N
     notes_heading = _section_heading(document, "Notas", heading_num_id, numbered=False)
     notes_heading.paragraph_format.space_before = Pt(12)
     notes_heading.paragraph_format.space_after = Pt(4)
+    # A material-revision section lengthens the body enough that Word otherwise
+    # tends to orphan only the fixed policy note or citation on a nearly empty
+    # page. Start Notes deliberately on a new page in that exceptional layout.
+    if report["revisions_title"]:
+        notes_heading.paragraph_format.page_break_before = True
     for index, paragraph in enumerate(report["notes"]):
         _add_note_paragraph(document, paragraph, first_line=index > 0)
 
-    # The annex isolates visuals from the flowing report body. Each chart gets
-    # a full-width page, so neither chart is shrunk or displaced by text.
+    # The report body may use as many pages as necessary. The annex always
+    # starts on a fresh page, and each chart gets its own full-width page.
     annex = _section_heading(document, report["annex_title"], heading_num_id, numbered=False)
     annex.paragraph_format.page_break_before = True
     _add_figure(document, report["figures"][0], assets_dir)

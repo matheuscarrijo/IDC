@@ -147,6 +147,7 @@
 % =============================================================================
 
 % --- Capa ---------------------------------------------------------------------
+\hypersetup{pageanchor=false}
 \begin{titlepage}
   \noindent\hfill\includegraphics[width=79mm]{logo.png}
 
@@ -173,6 +174,7 @@
     \reportdate
   \end{center}
 \end{titlepage}
+\hypersetup{pageanchor=true}
 \thispagestyle{firstpage}
 
 % =============================================================================
@@ -245,14 +247,17 @@ Lembre: o IDC mede posição relativa, não endividamento absoluto.}
 
 % SEÇÃO OPCIONAL — REVISÕES DOS DADOS
 % Não inclua essa seção no relatório mensal por padrão.
-% Somente quando "python -m src.compare_releases YYYYMM" indicar revisões,
-% insira aqui, antes de "Trajetória do índice", uma seção intitulada
-% "Revisões dos dados". Informe as safras comparadas, séries e competências
-% revisadas e inclua uma tabela com TODAS as competências cujo IDC mudou:
-% competência, IDC na safra anterior, IDC recalculado e diferença. Explique
-% também a diferença entre a variação mensal na safra atual e a comparação
-% com o valor publicado na nota anterior. Não liste na tabela revisões brutas
-% que não alteraram o IDC.
+% A auditoria de "python -m src.compare_releases YYYYMM" é sempre integral,
+% mas uma revisão rotineira só recebe destaque público quando satisfaz a dupla
+% materialidade: altera o IDC em pelo menos 0,010 ponto E afeta um elemento
+% efetivamente discutido no relatório. Inversão de sinal, criação/remoção de
+% recorde, invalidação de afirmação anterior, mudança metodológica relevante,
+% mudança de fonte/cobertura ou correção de erro relevante podem justificar a
+% seção independentemente do limiar. Reprocessamentos amplos
+% da fonte só entram quando alteram materialmente a trajetória ou a interpretação.
+% Quando necessária, insira aqui "Revisões dos dados" e mostre apenas as
+% competências materiais ou indispensáveis para explicar a base de comparação,
+% com três casas decimais. O registro técnico preserva todas as diferenças.
 
 \section{Trajetória do índice}
 
@@ -285,6 +290,11 @@ normalizado pelo método min-max com janela expansiva, a partir de \seriesinicio
 construção, o IDC mede a posição relativa do mês corrente em relação ao histórico observado
 pelo índice. O relatório de divulgação está disponível em
 \url{https://eaesp.fgv.br/producao-intelectual/indice-desconforto-credito-idc}.
+
+Revisões dos dados. Os valores históricos do IDC são recalculados a cada edição
+com a safra mais recente dos dados do Banco Central. Revisões com efeito material
+sobre o índice ou sua interpretação são descritas no relatório; a série
+disponibilizada incorpora todas as revisões identificadas.
 
 Citação recomendada. Gonzalez, L.; Carrijo, M.~L.; Schiozer, R.
 \textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.

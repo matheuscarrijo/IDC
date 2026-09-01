@@ -15,7 +15,7 @@ O objetivo é produzir a saída PDF de referência e, a partir da mesma fonte pr
 - `template.tex` — o template propriamente dito (auto-contido)
 - `logo.png` — logotipo institucional usado na capa
 
-Ao compilar, LuaLaTeX gera localmente `template.pdf`, `template.aux`, `template.log` e `template.out`. Esses artefatos reproduzíveis são ignorados pelo Git; o PDF atual deve ter cinco páginas, seguindo a mesma organização exigida para o relatório mensal.
+Ao compilar, LuaLaTeX gera localmente `template.pdf`, `template.aux`, `template.log` e `template.out`. Esses artefatos reproduzíveis são ignorados pelo Git. O relatório não tem número fixo de páginas: o corpo deve fluir pelo espaço necessário, sem redução de fonte para perseguir uma contagem. A seção `Notas` pode quebrar naturalmente entre páginas, sem quebra inicial obrigatória nem bloco indivisível. A seção `Anexo de figuras` sempre começa em nova página e mantém uma figura em largura integral por página.
 
 ## Como compilar
 
@@ -53,7 +53,7 @@ O PDF de saída é `template.pdf`.
    \newcommand{\authorthree}{Rafael Schiozer}
    ```
 
-3. Preencha os `\placeholder{...}` e os comandos da seção "DADOS DO RELATÓRIO", preservando a estrutura de seções reconhecida por `src.build_report_docx`. Execute antes `python -m src.compare_releases YYYYMM`. O template não traz `Revisões dos dados` por padrão: insira essa seção entre `Resultados` e `Trajetória do índice` somente quando o comparador encontrar revisões de observações já publicadas. Quando ela for necessária, inclua uma tabela com todas as competências cujo IDC efetivamente mudou, comparando o valor da safra anterior, o valor recalculado e a diferença; revisões brutas sem efeito no IDC ficam apenas na síntese textual. Sem revisões, não acrescente seção nem texto padronizado sobre o tema.
+3. Preencha os `\placeholder{...}` e os comandos da seção "DADOS DO RELATÓRIO", preservando a estrutura de seções reconhecida por `src.build_report_docx`. Execute antes `python -m src.compare_releases YYYYMM`. O comparador mantém a auditoria integral, mas o template não traz `Revisões dos dados` por padrão: insira essa seção entre `Resultados` e `Trajetória do índice` somente quando uma revisão rotineira alterar o IDC em pelo menos `0,010` ponto **e** afetar um elemento efetivamente discutido no relatório. Inversão de sinal, mudança de recorde, invalidação de afirmação publicada, mudança metodológica do IDC, mudança de fonte ou cobertura, ou correção de erro relevante são exceções qualitativas. Considere também o efeito líquido acumulado desde a última revisão destacada publicamente. Quando necessária, a tabela deve conter somente as competências materiais ou indispensáveis para explicar a base de comparação, sempre com três casas decimais. Sem materialidade pública, não acrescente a seção nem texto de ausência de revisões; a nota metodológica fixa em `Notas` cobre o procedimento.
 
 4. Mantenha as figuras fora do corpo principal. Atualize os dois blocos existentes no `Anexo de figuras`, usando `[H]`, largura integral e `\clearpage` entre eles:
 
@@ -103,7 +103,7 @@ As figuras não dependem da decisão automática de floats. O corpo principal co
 
 O gráfico `index.png` é gerado em formato aproximadamente quadrado. Isso aproveita a altura da primeira página do anexo sem ampliar fontes artificialmente nem distorcer a série.
 
-LuaLaTeX e Word usam mecanismos de composição diferentes, portanto pequenas diferenças de quebra de linha são aceitáveis. O critério de aprovação é: conteúdo idêntico, organização equivalente de páginas, elementos plenamente editáveis e ausência de defeitos visuais após renderização.
+LuaLaTeX e Word usam mecanismos de composição diferentes, portanto pequenas diferenças de quebra de linha e no total de páginas são aceitáveis. O critério de aprovação é: conteúdo idêntico, `Anexo de figuras` iniciado em nova página, uma figura por página no anexo, tipografia legível, elementos plenamente editáveis e ausência de defeitos visuais após renderização.
 
 Para regenerar o template Word após alterar este arquivo:
 

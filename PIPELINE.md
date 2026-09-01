@@ -152,19 +152,87 @@ python3 -m src.compare_releases "$PERIOD"
 
 The output identifies every revised raw observation and lists every overlapping
 reference month whose IDC changes when recalculated under the current vintage, with
-the prior value, recalculated value, and difference. Preserve this output for the
-report-writing step. If there is no preceding workbook, state that the revision audit
-is unavailable for that cycle; do not describe the absence of a comparison as evidence
-that the BCB made no revisions.
+the prior value, recalculated value, and difference. Preserve this complete output as
+the technical audit; public-disclosure materiality is a separate downstream decision.
+If there is no preceding workbook, state that the revision audit is unavailable for
+that cycle; do not describe the absence of a comparison as evidence that the BCB made
+no revisions.
 
 For month-over-month analysis, always compare the last two IDC observations rebuilt
 from the **current** workbook, so both months use one internally consistent vintage.
-If the comparator detects revisions, the monthly report must separately disclose all
-historical IDC values that effectively changed, not only the preceding report's last
-month. Present them in a table with reference month, value in the preceding vintage,
-recalculated value in the current vintage, and difference. Do not put raw-data revisions
-that leave the IDC unchanged in this table. This prevents a revised comparison base
-from being mistaken for an IDC calculation error.
+Never raise the audit tolerance to implement editorial materiality.
+
+For public disclosure, apply the strict two-part rule implemented by
+`quantify_revision_magnitude` and `assess_revision_materiality`:
+
+1. A routine revision must change at least one IDC value by **0.010 point** or more,
+   measured either against the immediately preceding vintage or as a net cumulative
+   change since the last vintage whose revisions were publicly disclosed.
+2. It must also affect an element actually discussed in the report: the current
+   month-over-month comparison, a cited record, a sequence, a component attribution,
+   the historical trajectory described in prose, or the conclusion.
+
+Do not use a relative-percentage trigger. A small revision is not public merely because
+the current monthly movement is also small. Qualitative overrides may independently
+require disclosure when a revision reverses the reported sign, creates or removes a
+record, invalidates a published statement, changes the IDC methodology, changes the
+source definition or coverage, or corrects a relevant error. A broad source
+reprocessing is not automatically public: disclose it
+when its effect on the final IDC meets the magnitude rule and materially changes the
+trajectory or interpretation.
+Treat a record override as a change to a record that is actually cited or relevant to
+the interpretation; a normalized component merely touching `1.000` mechanically is not
+by itself a public-disclosure trigger.
+
+The following executable pattern keeps the consecutive and cumulative checks explicit.
+Set the editorial flags only after reviewing the current draft and prior public claims;
+`LAST_DISCLOSED_PERIOD` is the vintage named in the most recent earlier report that
+actually contained a public `Revisões dos dados` section:
+
+```python
+from src.compare_releases import (
+    RevisionEditorialContext,
+    assess_revision_materiality,
+    compare_release_vintages,
+    compare_releases,
+    idc_revision_deltas_by_date,
+    quantify_revision_magnitude,
+)
+
+PERIOD = "YYYYMM"
+LAST_DISCLOSED_PERIOD = "YYYYMM"
+
+consecutive = compare_releases(PERIOD)
+cumulative = compare_release_vintages(LAST_DISCLOSED_PERIOD, PERIOD)
+facts = quantify_revision_magnitude(
+    consecutive,
+    cumulative_idc_deltas_since_last_disclosure=(
+        idc_revision_deltas_by_date(cumulative)
+    ),
+)
+context = RevisionEditorialContext(
+    affects_relevant_element=False,  # change only when report evidence supports it
+)
+decision = assess_revision_materiality(facts, context)
+
+print("consecutive_max=", facts.largest_current_absolute_delta)
+print("cumulative_max=", facts.largest_cumulative_absolute_delta)
+print("publicly_material=", decision.is_publicly_material)
+print("routine_rule_met=", decision.routine_rule_met)
+print("qualitative_overrides=", decision.qualitative_overrides)
+```
+
+If no revision has ever been publicly disclosed, use the earliest comparable stored
+vintage as the cumulative baseline and document that choice in the technical audit.
+The cumulative check is unnecessary only when there is no earlier comparable workbook.
+
+If the decision is publicly material, add a short `Revisões dos dados` section. Its
+table contains only the material reference months and any additional comparison-base
+row strictly needed to explain the current-vintage monthly change. Show public values
+with three decimal places; retain all raw and IDC revisions at full precision in the
+technical audit. If the decision is not material, omit the section entirely; the fixed
+methodological note under `Notas` explains that the published series still incorporates
+every revision.
 
 ### 4. Rebuild the index and all outputs
 
@@ -229,7 +297,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 | C raw/norm, I raw/norm, Q raw/norm | Last row of `components_raw.csv` and `index.csv` | `29,3% / 0,968`, … |
 | Previous IDC, delta, direction | Compare last two rows of `index.csv` | `1,000`, `0,046`, `recuou` |
 | C/I/Q prev→last in bullets | Compare last two rows of `components_raw.csv` | `29,6% → 29,3%` |
-| Revision disclosure | Use `python3 -m src.compare_releases PERIOD` | All changed IDC months: prior value, recalculated value, difference |
+| Revision disclosure | Audit with `compare_releases`; assess with `quantify_revision_magnitude` + `assess_revision_materiality` | Strict `0.010` + editorial relevance, with explicit qualitative overrides |
 
 **Analysis text** — the agent must write these in Portuguese based on the data:
 
@@ -237,7 +305,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 - Three `\placeholder{Contextualização histórica e interpretação econômica.}` items (one per component C, I, Q) — each ≈ 2 sentences: magnitude of change, historical positioning, economic interpretation.
 - `\placeholder{Breve caracterização: variação disseminada ou concentrada nos componentes.}` — 1 sentence: was the movement broad-based or driven by one component?
 - `\placeholder{Parágrafo de síntese sobre o significado conjunto dos movimentos.}` — 1–2 sentences: what the joint movement means for household credit stress.
-- `Revisões dos dados` is **absent from the template by default**. Add this section between `Resultados` and `Trajetória do índice` only when the comparator finds changes in previously available observations. Name the compared BCB releases, summarise the revised raw series/months, and add a table containing **every** reference month whose IDC effectively changed, with columns for reference month, prior-vintage IDC, current-vintage recalculation, and difference. Explain which changed month is the current comparison base and distinguish the current-vintage monthly change from the difference versus the value published in the prior report. If no revisions are detected, do not add the section or any “no revisions” boilerplate.
+- `Revisões dos dados` is **absent from the template by default**. Add it between `Resultados` and `Trajetória do índice` only when the strict public-materiality decision is positive. Name the compared BCB releases and explain the material effect on the IDC. The table contains only material months and any indispensable comparison-base row, with prior-vintage IDC, current-vintage recalculation, difference, and three decimal places. When the section is present, distinguish the homogeneous current-vintage monthly change from a comparison with the value printed in the preceding report. When the decision is negative, omit the section and any “no revisions” boilerplate.
 
 **Format rules for the analysis text:**
 - Write in formal Brazilian Portuguese.
@@ -246,10 +314,13 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 - Use comma as decimal separator (e.g. `0,954` not `0.954`).
 - Remove each `\placeholder{...}` wrapper and replace the whole command with the written text.
 - The report subtitle must make clear that the update/publication month and IDC reference month can differ. Use the pattern `Divulgação <mês de publicação>; competência <mês de referência>`.
-- A month-over-month figure in the results section must use two observations from the current BCB vintage. When the preceding month's value differs from the prior report because of revisions, explain that difference only in `Revisões dos dados`; never silently mix vintages.
+- A month-over-month figure in the results section must use two observations from the current BCB vintage. Never mix vintages. Explain the difference from the value printed in the prior report only when the revision is publicly material and `Revisões dos dados` is present; otherwise the fixed methodological note is sufficient.
 - Use `\textbf{}` only for numbers, percentages, deltas, and abbreviated month-year values such as `mar-2026`. Do not bold indicator names, institution names, prose labels, or explanatory phrases in running text.
 - Keep every figure's source note inside the same `figure` environment as its `\caption{...}`. Do not place `\fonte{BCB, elaboração própria.}` after `\end{figure}`.
 - Preserve the template's annex structure: the main body contains the narrative, table, trajectory discussion, next-update text, and notes; `\clearpage` then starts `Anexo de figuras`. Keep `[H]` on both figures and `\clearpage` between them so each annex page contains exactly one full-width figure.
+- The report has no fixed page count. Let the main body use as many pages as its content requires; never reduce type below the template sizes merely to meet a page target.
+- Keep `Notas` at `\footnotesize` in LaTeX (9 pt in the 11 pt document class) and at no less than 9 pt in the generated DOCX. `\tiny`, `\scriptsize`, and explicit font sizes below 9 pt are forbidden in that section.
+- Let `Notas` break naturally between body pages. Do not force the whole section onto a new page or keep it as an indivisible block, since either choice can create unnecessary blank space after the preceding section.
 - Keep report figures at `width=\linewidth`. Do not shrink a chart merely to make it fit. If a full-width chart cannot fit on its annex page with its caption and source, correct the chart's aspect ratio in the plotting code and regenerate it.
 - Keep `index.png` approximately square so Figure 1 uses the annex page vertically instead of recreating a large blank gap below a wide chart. The report regression test requires at least 130 mm of rendered height at the fixed 150 mm width.
 - The main text must explicitly refer to every figure by number or `\ref{...}` and describe what it shows.
@@ -310,7 +381,7 @@ The reviewing agent must read the `.tex`, inspect the LaTeX log, render every PD
 - Any `Overfull \hbox` warning in the report body or tables has been inspected by Codex and fixed when it affects the rendered layout.
 - The DOCX contains the same title, subtitle, authors, dates, section text, numerical values, table rows, bullets, captions, sources, notes, and citation as the filled `.tex` and PDF.
 - The DOCX is genuinely editable: body text remains Word paragraphs, the results remain a Word table, and charts remain embedded images rather than full-page screenshots.
-- The DOCX uses A4 pages and retains the intended five-page organization for both template and filled report: cover; results; remaining narrative/notes; annex Figure 1; annex Figure 2. Figure paragraphs, captions, and source notes use Word keep-with-next/keep-together controls, and explicit page breaks enforce one figure per annex page.
+- The DOCX uses A4 pages and lets the report body flow across as many pages as necessary without reducing the prescribed font sizes. `Anexo de figuras` always starts on a new page, even if it could fit after `Notas`; explicit page breaks keep one full-width figure on each annex page. Figure paragraphs, captions, and source notes use Word keep-with-next/keep-together controls.
 - The DOCX render has no clipped or overlapping text, broken table rows, missing glyphs, cropped charts, incorrect page numbers, or misplaced headers/footers.
 - The final `.docx` is non-empty, opens successfully, and contains no red template placeholders.
 
@@ -371,7 +442,8 @@ After `python3 main.py` completes, verify:
 - [ ] `README.md` — the two auto-managed tables (between `<!-- IDC_LATEST_START/END -->` and `<!-- IDC_STATS_START/END -->`) show the new date and values.
 - [ ] `README.md` — the latest-release narrative around the managed tables has been manually reviewed and updated for the new release/reference month.
 - [ ] `python3 -m src.compare_releases PERIOD` — revision audit completed against the immediately preceding BCB workbook; newly added observations were not misclassified as revisions.
-- [ ] If revisions were detected, the report contains `Revisões dos dados` with the affected raw series/months, a complete table of every IDC month that changed between vintages, and both change concepts clearly separated; if none were detected, the section is absent, as in the default template.
+- [ ] The technical audit retains every revision at full precision, and the public-materiality decision is recorded separately. A routine section exists only when `|revision| >= 0.010` **and** the report's interpretation is affected, unless an explicit qualitative override applies. The table contains only material or indispensable comparison-base rows at three decimal places.
+- [ ] The fixed note beginning `Revisões dos dados. Os valores históricos do IDC...` is present under `Notas`, whether or not the optional public section exists.
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.tex` — no `\placeholder{...}` commands remain.
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.pdf` — PDF compiled successfully (if lualatex available).
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.docx` — editable Word report generated from the filled `.tex`, non-empty, and opens successfully.
@@ -425,8 +497,8 @@ IDC/
 | `ModuleNotFoundError: No module named 'pandas'` | `.venv` missing or not activated | Run `uv venv && uv pip install -r requirements.txt` |
 | `ModuleNotFoundError: No module named 'docx'` | Updated requirements were not installed | Run `uv pip install -r requirements.txt` in the active environment |
 | DOCX generation rejects `\placeholder{...}` | The monthly `.tex` is still an unfilled template | Fill every monthly placeholder, rerun the LaTeX checks, then regenerate the DOCX |
-| DOCX chart is clipped or pagination differs unexpectedly | Word/LibreOffice layout needs review | Render the DOCX to PNG, fix `src/build_report_docx.py` or tighten prose/spacing without dropping content, regenerate, and inspect every page |
-| Revision section is missing or mixes comparison bases | The prior BCB vintage was not audited before report writing | Run `python3 -m src.compare_releases PERIOD`; use current-vintage values for month-over-month analysis and disclose prior-vintage differences separately |
+| DOCX chart is clipped or pagination differs unexpectedly | Word/LibreOffice layout needs review | Render the DOCX to PNG, fix only genuine clipping, overlap, or grouping defects, regenerate, and inspect every page. Accept additional body pages and never compress `Notas` below the 9 pt floor |
+| Revision section appears for immaterial noise, is missing for a material change, or mixes bases | Audit and editorial materiality were conflated | Keep the complete `compare_releases` audit, assess the `0.010` threshold and editorial context separately, check cumulative net changes since the last public disclosure, and always use current-vintage values for month-over-month analysis |
 | Figure is too tall at full width | The source chart aspect ratio cannot fit its annex page | Adjust the figure dimensions in `src/plot.py` and regenerate the PNG; do not reduce the figure until labels become hard to read |
 | `RuntimeError: Bloco automático do IDC não encontrado no README.md` | README markers were accidentally removed | Restore `<!-- IDC_LATEST_START -->` / `<!-- IDC_LATEST_END -->` and `<!-- IDC_STATS_START -->` / `<!-- IDC_STATS_END -->` markers in README.md |
 | Index value unchanged from prior month | The new observation may be unchanged, or revisions may offset it | Run `python3 -m src.compare_releases PERIOD`, inspect the current-vintage components, and flag unexplained equality for human review; file size alone is not evidence |
