@@ -41,7 +41,7 @@ previous = f"{previous_month_year}{previous_month:02d}"
 period = previous if today.day <= 7 else current
 ```
 
-First check whether the release XLSX already exists under `data/raw/PERIOD/`. If it exists, stop and report that the release cycle has already succeeded. If it is missing locally, attempt to download it; an HTTP 404 means the same period should be retried on the next scheduled date.
+After synchronizing local `main` with `origin/main` as described in the preflight below, check whether the release XLSX already exists under `data/raw/PERIOD/`. If it exists, stop and report that the release cycle has already succeeded. If it is missing locally, attempt to download it; an HTTP 404 means the same period should be retried on the next scheduled date.
 
 ## Python environment
 
@@ -59,6 +59,35 @@ The `.venv` directory is in `.gitignore` and will not be committed.
 ## Step-by-step commands
 
 All commands must be run from the repository root (`/Users/matheuslopescarrijo/Documents/Git/IDC`).
+
+### 0. Synchronize local `main`
+
+Before calculating the release period, checking for local release files, downloading data, or modifying anything, require a clean working tree and fast-forward local `main` from GitHub:
+
+```bash
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Working tree is not clean; aborting before synchronization."
+    git status --short
+    exit 1
+fi
+
+if ! git switch main; then
+    echo "Could not switch to local main; aborting."
+    exit 1
+fi
+
+if ! git fetch --prune origin main; then
+    echo "Could not fetch origin/main; aborting rather than using stale local state."
+    exit 1
+fi
+
+if ! git merge --ff-only origin/main; then
+    echo "Local main cannot be fast-forwarded to origin/main; aborting for manual reconciliation."
+    exit 1
+fi
+```
+
+The order is mandatory: clean-tree check, switch to `main`, fetch, fast-forward, and only then the release-file check. If any preflight command fails, stop and report the failure. Never continue the pipeline from stale local state, and never reset, rebase, or force-update `main` automatically.
 
 ### 1. Select the release period
 
@@ -492,6 +521,8 @@ IDC/
 
 | Symptom | Likely cause | Action |
 |---|---|---|
+| Working tree is dirty before the preflight | Another task or the user has uncommitted changes | Stop and report `git status --short`; do not switch branches or modify files |
+| Fetch fails or local `main` cannot fast-forward to `origin/main` | Network/authentication failure or divergent local history | Stop and report the exact failure; never continue from stale state or reset/rebase automatically |
 | HTTP 404 on download | Scheduled BCB release not yet published | Stop without modifying files and retry the same period on the next scheduled run |
 | DNS or socket failure reaching BCB | Local runner has no outbound access | If `gh auth status` succeeds, run `python3 -m src.download_bcb_via_github PERIOD`; otherwise report the infrastructure blocker |
 | `ModuleNotFoundError: No module named 'pandas'` | `.venv` missing or not activated | Run `uv venv && uv pip install -r requirements.txt` |
