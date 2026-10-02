@@ -1,4 +1,4 @@
-This is LuaHBTeX, Version 1.24.0 (TeX Live 2026)  (format=lualatex 2026.5.18)  30 SEP 2026 08:17
+This is LuaHBTeX, Version 1.24.0 (TeX Live 2026)  (format=lualatex 2026.5.18)  2 OCT 2026 08:14
  restricted system commands enabled.
 **idc-update-202609.tex
 (./idc-update-202609.tex
@@ -8,8 +8,8 @@ Lua module: luaotfload 2024-12-03 v3.29 Lua based OpenType font support
 Lua module: lualibs 2023-07-13 v2.76 ConTeXt Lua standard libraries.
 Lua module: lualibs-extended 2023-07-13 v2.76 ConTeXt Lua libraries -- extended 
 collection.
-luaotfload | conf : Root cache directory is "/tmp/idc-texmf-var-202609/luatex-ca
-che/generic/names".
+luaotfload | conf : Root cache directory is "/Users/matheuslopescarrijo/Library/
+texlive/2026/texmf-var/luatex-cache/generic/names".
 luaotfload | init : Loading fontloader "fontloader-2023-12-28.lua" from kpse-res
 olved path "/usr/local/texlive/2026/texmf-dist/tex/luatex/luaotfload/fontloader-
 2023-12-28.lua".
@@ -20,8 +20,8 @@ Inserting `luaotfload.node_processor' in `hpack_filter'.
 Inserting `luaotfload.glyph_stream' in `glyph_stream_provider'.
 Inserting `luaotfload.define_font' in `define_font'.
 Lua-only attribute luaotfload_color_attribute = 2
-luaotfload | conf : Root cache directory is "/tmp/idc-texmf-var-202609/luatex-ca
-che/generic/names".
+luaotfload | conf : Root cache directory is "/Users/matheuslopescarrijo/Library/
+texlive/2026/texmf-var/luatex-cache/generic/names".
 Inserting `luaotfload.harf.strip_prefix' in `find_opentype_file'.
 Inserting `luaotfload.harf.strip_prefix' in `find_truetype_file'.
 Removing  `luaotfload.glyph_stream' from `glyph_stream_provider'.
@@ -44,8 +44,8 @@ Inserting `tracingstacklevels' in `input_level_string'. (/usr/local/texlive/202
 Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
 (/usr/local/texlive/2026/texmf-dist/tex/latex/base/size11.clo
 File: size11.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
-luaotfload | db : Font names database loaded from /tmp/idc-texmf-var-202609/luat
-ex-cache/generic/names/luaotfload-names.luc.gz)
+luaotfload | db : Font names database loaded from /Users/matheuslopescarrijo/Lib
+rary/texlive/2026/texmf-var/luatex-cache/generic/names/luaotfload-names.luc.gz)
 \c@part=\count273
 \c@section=\count274
 \c@subsection=\count275
@@ -154,8 +154,8 @@ File: microtype.cfg 2026/03/01 v3.2d microtype main configuration file (RS)
 )
 LaTeX Info: Redefining \microtypesetup on input line 3065.
 )
-luaotfload | cache : Lookup cache loaded from /tmp/idc-texmf-var-202609/luatex-c
-ache/generic/names/luaotfload-lookup-cache.luc.
+luaotfload | cache : Lookup cache loaded from /Users/matheuslopescarrijo/Library
+/texlive/2026/texmf-var/luatex-cache/generic/names/luaotfload-lookup-cache.luc.
 
 Package fontspec Info: 
 (fontspec)             Font family 'TeXGyrePagella(0)' created for font 'TeX
@@ -2128,7 +2128,7 @@ Here is how much of LuaTeX's memory you used:
    5 hlist, 1 vlist, 1 rule, 1 local_par, 7 glue, 3 kern, 1 penalty, 3 glyph, 15
  attribute, 56 glue_spec, 8 attribute_list, 2 shape, 1 write, 1 pdf_action nodes
 
-   avail lists: 1:5,2:904,3:194,4:83,5:491,6:51,7:6580,8:72,9:359,10:13,11:663
+   avail lists: 1:4,2:904,3:194,4:85,5:486,6:51,7:6628,8:72,9:359,10:13,11:668
  40347 multiletter control sequences out of 65536+600000
  70 fonts using 10428503 bytes
  73i,12n,92p,1013b,490s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -2137,7 +2137,7 @@ Here is how much of LuaTeX's memory you used:
 la-regular.otf></usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyr
 e/texgyrepagella-italic.otf></usr/local/texlive/2026/texmf-dist/fonts/opentype/p
 ublic/tex-gyre/texgyrepagella-bold.otf>
-Output written on idc-update-202609.pdf (5 pages, 295889 bytes).
+Output written on idc-update-202609.pdf (5 pages, 295956 bytes).
 
 PDF statistics: 87 PDF objects out of 1000 (max. 8388607)
  61 compressed objects within 1 object stream
