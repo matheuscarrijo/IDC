@@ -31,6 +31,14 @@ W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W = f"{{{W_NS}}}"
 
 
+def requires_local_files(*paths):
+    """Report sources and assets are intentionally excluded from GitHub."""
+    return unittest.skipUnless(
+        all(path.is_file() for path in paths),
+        "Requires local report sources/assets that are not versioned",
+    )
+
+
 class BuildReportDocxTests(unittest.TestCase):
     def test_paragraph_parser_discards_layout_only_commands(self):
         fragments = _paragraph_fragments(
@@ -45,6 +53,7 @@ class BuildReportDocxTests(unittest.TestCase):
 
         self.assertEqual(fragments, [r"Texto com \textbf{0,959}."])
 
+    @requires_local_files(TEMPLATE_TEX)
     def test_parser_reads_the_supported_idc_template(self):
         report = _parse_report(TEMPLATE_TEX.read_text(encoding="utf-8"))
 
@@ -55,6 +64,7 @@ class BuildReportDocxTests(unittest.TestCase):
         self.assertEqual(report["revisions"], [])
         self.assertEqual([figure["image"] for figure in report["figures"]], ["index.png", "components_raw.png"])
 
+    @requires_local_files(TEMPLATE_TEX)
     def test_latex_annex_and_each_figure_start_on_a_fresh_page(self):
         source = TEMPLATE_TEX.read_text(encoding="utf-8")
         self.assertRegex(
@@ -67,6 +77,7 @@ class BuildReportDocxTests(unittest.TestCase):
             r"\\end\{figure\}\s*\\clearpage\s*\\begin\{figure\}\[H\]",
         )
 
+    @requires_local_files(TEMPLATE_TEX)
     def test_parser_rejects_missing_annex_page_boundaries(self):
         source = TEMPLATE_TEX.read_text(encoding="utf-8")
         variants = (
@@ -97,6 +108,7 @@ class BuildReportDocxTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     _parse_report(variant)
 
+    @requires_local_files(FILLED_TEX)
     def test_parser_reads_the_optional_revisions_section_when_present(self):
         report = _parse_report(FILLED_TEX.read_text(encoding="utf-8"))
 
@@ -124,6 +136,7 @@ class BuildReportDocxTests(unittest.TestCase):
         self.assertEqual(len(report["revisions_summary"]), 1)
         self.assertIn("+0,026", report["revisions_summary"][0])
 
+    @requires_local_files(*REPORT_TEX_BY_PERIOD.values())
     def test_historical_reports_follow_the_strict_public_materiality_policy(self):
         reports = {
             period: _parse_report(path.read_text(encoding="utf-8"))
@@ -147,6 +160,7 @@ class BuildReportDocxTests(unittest.TestCase):
                     for note in report["notes"]
                 ), 1)
 
+    @requires_local_files(TEMPLATE_TEX)
     def test_parser_requires_the_fixed_revision_policy_note(self):
         source = TEMPLATE_TEX.read_text(encoding="utf-8")
         start = source.index("Revisões dos dados. Os valores históricos do IDC")
@@ -156,6 +170,7 @@ class BuildReportDocxTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "revision-policy note"):
             _parse_report(source)
 
+    @requires_local_files(TEMPLATE_TEX)
     def test_parser_rejects_a_duplicated_revision_policy_note(self):
         source = TEMPLATE_TEX.read_text(encoding="utf-8")
         start = source.index("Revisões dos dados. Os valores históricos do IDC")
@@ -166,6 +181,7 @@ class BuildReportDocxTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exactly once"):
             _parse_report(duplicated)
 
+    @requires_local_files(FILLED_TEX)
     def test_parser_rejects_excess_precision_in_public_revision_table(self):
         source = FILLED_TEX.read_text(encoding="utf-8").replace(
             "jan-2014 & 0,249 & 0,181 & -0,068",
@@ -195,6 +211,7 @@ class BuildReportDocxTests(unittest.TestCase):
                 table_name="The IDC revision table",
             )
 
+    @requires_local_files(FILLED_TEX)
     def test_parser_rejects_a_revision_section_without_its_table(self):
         source = FILLED_TEX.read_text(encoding="utf-8")
         section_start = source.index(r"\section{Revisões dos dados}")
@@ -205,6 +222,7 @@ class BuildReportDocxTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires a comparison table"):
             _parse_report(source)
 
+    @requires_local_files(TEMPLATE_TEX, TEMPLATE_ASSETS / "logo.png")
     def test_builder_creates_an_editable_a4_document(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "template.docx"
@@ -227,6 +245,7 @@ class BuildReportDocxTests(unittest.TestCase):
                 13.0,
             )
 
+    @requires_local_files(TEMPLATE_TEX, TEMPLATE_ASSETS / "logo.png")
     def test_builder_rejects_unreadable_notes_size_commands(self):
         source = TEMPLATE_TEX.read_text(encoding="utf-8")
         unreadable_variants = (
@@ -258,6 +277,7 @@ class BuildReportDocxTests(unittest.TestCase):
                             assets_dir=TEMPLATE_ASSETS,
                         )
 
+    @requires_local_files(TEMPLATE_TEX)
     def test_notes_typography_validation_ignores_comments(self):
         source = TEMPLATE_TEX.read_text(encoding="utf-8").replace(
             r"\begingroup\footnotesize",
@@ -267,6 +287,7 @@ class BuildReportDocxTests(unittest.TestCase):
         report = _parse_report(source)
         self.assertTrue(report["notes"])
 
+    @requires_local_files(LATEST_TEX)
     def test_latest_report_uses_readable_notes_typography(self):
         source = LATEST_TEX.read_text(encoding="utf-8")
         notes = source[
@@ -276,6 +297,7 @@ class BuildReportDocxTests(unittest.TestCase):
         self.assertIn(r"\begingroup\footnotesize", notes)
         self.assertNotRegex(notes, r"\\(?:tiny|scriptsize)\b")
 
+    @requires_local_files(TEMPLATE_TEX, TEMPLATE_ASSETS / "logo.png")
     def test_heading_numbering_is_native_decimal_and_word_compatible(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "template.docx"
@@ -319,6 +341,7 @@ class BuildReportDocxTests(unittest.TestCase):
                 self.assertEqual(abstract.find(f"{W}lvl/{W}pStyle").get(f"{W}val"), "Heading1")
                 self.assertEqual(abstract.find(f"{W}lvl/{W}lvlText").get(f"{W}val"), "%1")
 
+    @requires_local_files(TEMPLATE_TEX)
     def test_require_filled_rejects_the_template(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "cannot contain"):
@@ -329,6 +352,12 @@ class BuildReportDocxTests(unittest.TestCase):
                     require_filled=True,
                 )
 
+    @requires_local_files(
+        FILLED_TEX,
+        FILLED_ASSETS / "logo.png",
+        FILLED_ASSETS / "index.png",
+        FILLED_ASSETS / "components_raw.png",
+    )
     def test_filled_figures_are_full_width_and_kept_with_their_captions(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "filled.docx"

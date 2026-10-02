@@ -15,7 +15,7 @@ This document is written for automated agents executing the IDC monthly update. 
 5. Updates the two auto-managed tables and the latest-release narrative in `README.md`.
 6. **Generates the monthly update report** as matching `.tex`, `.pdf`, and editable `.docx` files in `outputs/report/update-YYYYMM/` (see [Report generation](#5-generate-the-monthly-report)).
 7. Runs PDF and DOCX content/style/layout reviews and fixes any issues before committing.
-8. Creates a git commit with all changed files.
+8. Creates a git commit with the updated data, figures, documentation, and final monthly PDF. Report sources, build files, DOCX files, copied images, revision audits, and templates stay local and are ignored by Git.
 
 ## Release period
 
@@ -294,9 +294,18 @@ Verify that "último dado" matches the expected reference month (typically two m
 
 The analysis and monthly LaTeX filling are performed **by the agent**. After the filled `.tex` is final, the PDF is compiled with LuaLaTeX and the editable DOCX is generated deterministically from that same `.tex`. The filled LaTeX file is the monthly content source of truth; do not maintain an independent Word copy by hand.
 
+Report generation requires the local master template at `outputs/report/template-latex/template.tex` and its `logo.png`. Templates and all report auxiliaries are intentionally absent from GitHub. Supply these files locally when setting up a fresh clone; preserve them on the pipeline host. Only `outputs/report/update-YYYYMM/idc-update-YYYYMM.pdf` is committed after review.
+
 #### 5a. Create the report directory and copy assets
 
 ```bash
+for REPORT_ASSET in template.tex logo.png; do
+    if [ ! -f "outputs/report/template-latex/$REPORT_ASSET" ]; then
+        echo "Missing local report asset: outputs/report/template-latex/$REPORT_ASSET"
+        exit 1
+    fi
+done
+
 REPORT_DIR="outputs/report/update-${PERIOD}"
 mkdir -p "$REPORT_DIR"
 cp outputs/report/template-latex/template.tex  "$REPORT_DIR/idc-update-${PERIOD}.tex"
@@ -383,7 +392,7 @@ python3 -m src.build_report_docx \
     --require-filled
 ```
 
-The reusable Word template at `outputs/report/template-docx/template.docx` is generated from the versioned LaTeX template with:
+The local reusable Word template at `outputs/report/template-docx/template.docx` is generated from the local LaTeX template with:
 
 ```bash
 python3 -m src.build_report_docx \
@@ -436,11 +445,15 @@ git add README.md \
         outputs/figures/components_normalized.png \
         outputs/figures/index.png
 
-# These paths are intentionally ignored by default, but monthly updates must
-# explicitly version the release inputs and the generated report for the period.
-git add -f data/raw/"$PERIOD"/ \
-           outputs/report/update-"$PERIOD"/
+# Only the two official BCB inputs are force-added from the ignored raw folder.
+git add -f data/raw/"$PERIOD"/"${PERIOD}_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx" \
+           data/raw/"$PERIOD"/"${PERIOD}_Texto_de_estatisticas_monetarias_e_de_credito.pdf"
+
+# The final monthly PDF is explicitly allowed by .gitignore.
+git add "outputs/report/update-${PERIOD}/idc-update-${PERIOD}.pdf"
 ```
+
+Never force-add a report directory or its auxiliaries. Inspect `git diff --cached --name-only -- outputs/report/` before committing: report additions and modifications must be final monthly PDFs only. Keep the `.tex`, `.docx`, LaTeX build files, `logo.png`, `index.png`, `components_raw.png`, revision audits, and all templates local.
 
 Also stage `main.py` only if `git diff main.py` shows changes.
 
@@ -480,6 +493,9 @@ After `python3 main.py` completes, verify:
 - [ ] Codex style review of the filled `.tex` passes: bold is restricted to numbers, percentages, deltas, and abbreviated month-year values.
 - [ ] Codex layout review of the final PDF passes: figures are referenced coherently from the text, captions and source notes are together, no source note is duplicated, and no visually relevant LaTeX overfull warning remains.
 - [ ] Codex content/layout review of the rendered DOCX passes: content matches the `.tex`/PDF, all pages were inspected, charts are uncropped, the table remains editable, and no layout defect or template placeholder remains.
+- [ ] Only final monthly PDFs under `outputs/report/` are staged for publication; templates and report auxiliaries remain local and ignored.
+
+Tests that require local report sources or assets explicitly skip when those files are absent, as in a fresh GitHub clone. On the report-generation host, keep those local files available so the complete report checks run.
 
 ## Repository layout (relevant paths)
 
@@ -500,18 +516,20 @@ IDC/
 │   └── processed/                   # Generated: *.csv, idc_data.xlsx
 ├── outputs/figures/                 # Generated: 6 PNGs
 └── outputs/report/
-    ├── template-latex/              # Versioned LaTeX template and logo
+    ├── template-latex/              # Local only: LaTeX template and logo
     │   ├── template.tex             # Master template with \placeholder{} variables
     │   └── logo.png                 # FGV logo
-    ├── template-docx/               # Word mirror generated from template.tex
+    ├── template-docx/               # Local only: Word mirror of template.tex
     │   ├── template.docx            # Editable A4 Word template
     │   └── README.md                # Regeneration and fidelity notes
-    └── update-YYYYMM/              # Monthly report (committed)
-        ├── idc-update-YYYYMM.tex   # Filled LaTeX source
-        ├── idc-update-YYYYMM.pdf   # Compiled PDF
-        ├── idc-update-YYYYMM.docx  # Editable Word report generated from the .tex
-        ├── index.png               # Copy of main IDC chart
-        └── components_raw.png      # Copy of components chart
+    └── update-YYYYMM/               # Only the final PDF is committed
+        ├── idc-update-YYYYMM.tex    # Local filled LaTeX source
+        ├── idc-update-YYYYMM.pdf    # Reviewed final PDF (committed)
+        ├── idc-update-YYYYMM.docx   # Local editable Word report
+        ├── logo.png                # Local copy of the logo
+        ├── index.png               # Local copy of the main IDC chart
+        ├── components_raw.png      # Local copy of the components chart
+        └── revision-audit-YYYYMM.txt # Local full-precision revision audit
 ```
 
 ## How `load_data.py` picks the right file

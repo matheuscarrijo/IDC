@@ -182,7 +182,7 @@ python main.py
 
 O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, constrói os três componentes e o índice (normalização min-max com janela expansiva), salva os CSVs em `data/processed/` e as figuras em `outputs/figures/`. O relatório final do projeto fica em `outputs/report/`.
 
-Cada nota mensal é publicada em três formatos com o mesmo conteúdo: fonte LaTeX (`.tex`), PDF compilado (`.pdf`) e documento Word editável (`.docx`). Depois de preencher e revisar o LaTeX, gere o DOCX diretamente da mesma fonte para evitar versões divergentes:
+Cada nota mensal é gerada localmente em três formatos com o mesmo conteúdo: fonte LaTeX (`.tex`), PDF compilado (`.pdf`) e documento Word editável (`.docx`). Somente o PDF final é versionado e publicado no GitHub. Fontes, arquivos auxiliares de construção, DOCX, imagens copiadas para o relatório, auditorias de revisão e templates permanecem locais e são ignorados pelo Git. Depois de preencher e revisar o LaTeX, gere o DOCX diretamente da mesma fonte para evitar versões divergentes:
 
 ```bash
 python -m src.build_report_docx \
@@ -193,6 +193,8 @@ python -m src.build_report_docx \
 ```
 
 O processo mensal completo, inclusive a compilação e a revisão visual do PDF e do DOCX, está documentado em [`PIPELINE.md`](PIPELINE.md).
+
+Para gerar relatórios em uma nova cópia do repositório, disponibilize localmente o template mestre `outputs/report/template-latex/template.tex` e seu `logo.png`. Esses arquivos não são incluídos no clone do GitHub.
 
 ## 6. Estrutura do Repositório
 
@@ -219,7 +221,7 @@ O processo mensal completo, inclusive a compilação e a revisão visual do PDF 
 │   └── plot.py          # gera as figuras
 ├── outputs/
 │   ├── figures/         # 6 figuras (PNG)
-│   └── report/          # templates e relatórios mensais em TEX, PDF e DOCX
+│   └── report/          # PDFs finais versionados; templates e auxiliares locais
 ├── main.py              # ponto de entrada
 ├── CITATION.cff         # autoria e citação recomendada
 ├── LICENSE              # licença MIT para o código-fonte
@@ -249,10 +251,9 @@ O processo mensal completo, inclusive a compilação e a revisão visual do PDF 
 
 **Relatório (`outputs/report/`):**
 
-- **`update-202609/idc-update-202609.tex`** — fonte LaTeX preenchida da nota mensal.
-- **`update-202609/idc-update-202609.pdf`** — nota mensal compilada e verificada.
-- **`update-202609/idc-update-202609.docx`** — versão Word editável, gerada da fonte LaTeX e verificada por renderização.
-- **`template-docx/template.docx`** — espelho Word editável do template LaTeX, regenerado por `src.build_report_docx`.
+- **`update-202609/idc-update-202609.pdf`** — nota mensal compilada e verificada; único formato do relatório versionado no GitHub.
+
+O LaTeX preenchido, o Word editável, os templates, as imagens auxiliares e a auditoria técnica de revisão são preservados apenas no ambiente local de geração.
 
 ## 8. Estrutura e Fontes de Dados
 

@@ -1,16 +1,10 @@
-# generated outputs (reproduzíveis via main.py)
-# outputs/
-outputs/report/template-latex/*
-!outputs/report/template-latex/
-!outputs/report/template-latex/README.md
-!outputs/report/template-latex/template.tex
-!outputs/report/template-latex/logo.png
-outputs/report/template-docx/*
-!outputs/report/template-docx/
-!outputs/report/template-docx/README.md
-!outputs/report/template-docx/template.docx
-outputs/report/release/
-outputs/report/update-*/
+# Relatórios: somente os PDFs finais mensais são versionados.
+# Fontes LaTeX, arquivos de construção, DOCX, templates, imagens e auditorias
+# permanecem locais, inclusive logo.png, index.png e components_raw.png.
+outputs/report/*
+!outputs/report/update-*/
+outputs/report/update-*/*
+!outputs/report/update-*/idc-update-*.pdf
 
 # BCB raw data (reproduzível via download_bcb_release.py)
 data/raw/
