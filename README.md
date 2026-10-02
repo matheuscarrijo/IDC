@@ -21,7 +21,7 @@ Com a divulgação em **setembro de 2026** das estatísticas monetárias e de cr
 <!-- IDC_LATEST_END -->
 
 
-O valor **0,963** indica que, em jul-2026, o desconforto de crédito permaneceu próximo do ponto máximo da janela histórica observada pelo índice. Em relação a jun-2026, recalculado em **0,950** com a mesma safra de dados, houve alta de **0,013 ponto**: o avanço da inadimplência para o máximo histórico mais do que compensou a queda da participação das modalidades onerosas no crédito livre PF, enquanto o comprometimento de renda permaneceu no máximo da amostra.
+O valor **0,963** indica que, em jul-2026, o desconforto de crédito permaneceu próximo do ponto máximo da janela histórica observada pelo índice. Em relação a jun-2026, recalculado em **0,950** com a mesma safra de dados, houve alta de **0,013 ponto**: o avanço da inadimplência para o máximo no horizonte calculável do IDC mais do que compensou a queda da participação das modalidades onerosas no crédito livre PF, enquanto o comprometimento de renda permaneceu no máximo da amostra.
 
 É importante destacar que o IDC não é uma medida absoluta de endividamento; ele indica a posição do mês corrente em relação ao histórico disponível.
 

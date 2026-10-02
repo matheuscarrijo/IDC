@@ -41,7 +41,7 @@ previous = f"{previous_month_year}{previous_month:02d}"
 period = previous if today.day <= 7 else current
 ```
 
-First check whether the release XLSX already exists under `data/raw/PERIOD/`. If it exists, stop and report that the release cycle has already succeeded. If it is missing locally, attempt to download it; an HTTP 404 means the same period should be retried on the next scheduled date.
+After synchronizing local `main` with `origin/main` as described in the preflight below, check whether the release XLSX already exists under `data/raw/PERIOD/`. If it exists, stop and report that the release cycle has already succeeded. If it is missing locally, attempt to download it; an HTTP 404 means the same period should be retried on the next scheduled date.
 
 ## Python environment
 
@@ -59,6 +59,35 @@ The `.venv` directory is in `.gitignore` and will not be committed.
 ## Step-by-step commands
 
 All commands must be run from the repository root (`/Users/matheuslopescarrijo/Documents/Git/IDC`).
+
+### 0. Synchronize local `main`
+
+Before calculating the release period, checking for local release files, downloading data, or modifying anything, require a clean working tree and fast-forward local `main` from GitHub:
+
+```bash
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Working tree is not clean; aborting before synchronization."
+    git status --short
+    exit 1
+fi
+
+if ! git switch main; then
+    echo "Could not switch to local main; aborting."
+    exit 1
+fi
+
+if ! git fetch --prune origin main; then
+    echo "Could not fetch origin/main; aborting rather than using stale local state."
+    exit 1
+fi
+
+if ! git merge --ff-only origin/main; then
+    echo "Local main cannot be fast-forwarded to origin/main; aborting for manual reconciliation."
+    exit 1
+fi
+```
+
+The order is mandatory: clean-tree check, switch to `main`, fetch, fast-forward, and only then the release-file check. If any preflight command fails, stop and report the failure. Never continue the pipeline from stale local state, and never reset, rebase, or force-update `main` automatically.
 
 ### 1. Select the release period
 
@@ -291,7 +320,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 | `\mespublicacao` | Full Portuguese month and year of the release | `maio de 2026` |
 | `\proxdivulgacao` | Next publication month (release month + 1) | `junho de 2026` |
 | `\mesproximo` | Next reference month (reference month + 1) | `abr-2026` |
-| `\reportdate` | Today's date in full Portuguese | `28 de maio de 2026` |
+| `\reportdate` | Nominal BCB publication/release month in full Portuguese, initial capital, without the day | `Maio de 2026` |
 | `\reportsubtitle` | Must name both publication and reference months | `Nota Técnica de Atualização --- Divulgação maio de 2026; competência março de 2026` |
 | IDC table value | Last value of `index` column | `0,954` |
 | C raw/norm, I raw/norm, Q raw/norm | Last row of `components_raw.csv` and `index.csv` | `29,3% / 0,968`, … |
@@ -314,6 +343,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 - Use comma as decimal separator (e.g. `0,954` not `0.954`).
 - Remove each `\placeholder{...}` wrapper and replace the whole command with the written text.
 - The report subtitle must make clear that the update/publication month and IDC reference month can differ. Use the pattern `Divulgação <mês de publicação>; competência <mês de referência>`.
+- The cover date (`\reportdate`) uses the nominal BCB publication/release month in `Mês de AAAA` format, with an initial capital and no day (e.g. `Setembro de 2026` for release `202609`). It must agree with `\mespublicacao`, even if the report is generated during a retry in the following month; do not use today's date or the IDC observation month. Keep the observation months in the body, tables, captions, and charts tied to the actual data.
 - A month-over-month figure in the results section must use two observations from the current BCB vintage. Never mix vintages. Explain the difference from the value printed in the prior report only when the revision is publicly material and `Revisões dos dados` is present; otherwise the fixed methodological note is sufficient.
 - Use `\textbf{}` only for numbers, percentages, deltas, and abbreviated month-year values such as `mar-2026`. Do not bold indicator names, institution names, prose labels, or explanatory phrases in running text.
 - Keep every figure's source note inside the same `figure` environment as its `\caption{...}`. Do not place `\fonte{BCB, elaboração própria.}` after `\end{figure}`.
@@ -492,6 +522,8 @@ IDC/
 
 | Symptom | Likely cause | Action |
 |---|---|---|
+| Working tree is dirty before the preflight | Another task or the user has uncommitted changes | Stop and report `git status --short`; do not switch branches or modify files |
+| Fetch fails or local `main` cannot fast-forward to `origin/main` | Network/authentication failure or divergent local history | Stop and report the exact failure; never continue from stale state or reset/rebase automatically |
 | HTTP 404 on download | Scheduled BCB release not yet published | Stop without modifying files and retry the same period on the next scheduled run |
 | DNS or socket failure reaching BCB | Local runner has no outbound access | If `gh auth status` succeeds, run `python3 -m src.download_bcb_via_github PERIOD`; otherwise report the infrastructure blocker |
 | `ModuleNotFoundError: No module named 'pandas'` | `.venv` missing or not activated | Run `uv venv && uv pip install -r requirements.txt` |
