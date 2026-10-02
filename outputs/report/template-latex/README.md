@@ -46,12 +46,18 @@ O PDF de saída é `template.pdf`.
    ```latex
    \newcommand{\reporttitle}{Índice de Desconforto de Crédito}
    \newcommand{\reportsubtitle}{Nota Técnica de Atualização --- Divulgação maio de 2026; competência março de 2026}
-   \newcommand{\reportdate}{28 de maio de 2026}
+   \newcommand{\reportdate}{Maio de 2026}
 
    \newcommand{\authorone}{Lauro Gonzalez}
    \newcommand{\authortwo}{Matheus L. Carrijo}
    \newcommand{\authorthree}{Rafael Schiozer}
    ```
+
+   A data da capa (`\reportdate`) deve usar apenas o mês da divulgação e o ano,
+   com inicial maiúscula, como `Setembro de 2026`. Ela acompanha
+   `\mespublicacao`, mesmo quando o relatório é gerado no mês seguinte.
+   As datas dos dados no corpo e nas figuras continuam indicando suas
+   respectivas competências.
 
 3. Preencha os `\placeholder{...}` e os comandos da seção "DADOS DO RELATÓRIO", preservando a estrutura de seções reconhecida por `src.build_report_docx`. Execute antes `python -m src.compare_releases YYYYMM`. O comparador mantém a auditoria integral, mas o template não traz `Revisões dos dados` por padrão: insira essa seção entre `Resultados` e `Trajetória do índice` somente quando uma revisão rotineira alterar o IDC em pelo menos `0,010` ponto **e** afetar um elemento efetivamente discutido no relatório. Inversão de sinal, mudança de recorde, invalidação de afirmação publicada, mudança metodológica do IDC, mudança de fonte ou cobertura, ou correção de erro relevante são exceções qualitativas. Considere também o efeito líquido acumulado desde a última revisão destacada publicamente. Quando necessária, a tabela deve conter somente as competências materiais ou indispensáveis para explicar a base de comparação, sempre com três casas decimais. Sem materialidade pública, não acrescente a seção nem texto de ausência de revisões; a nota metodológica fixa em `Notas` cobre o procedimento.
 

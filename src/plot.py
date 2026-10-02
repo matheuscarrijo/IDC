@@ -10,9 +10,17 @@ import pandas as pd
 
 FIGURES_DIR = Path("outputs/figures")
 
-KEY_EVENTS = {
+_HISTORICAL_EVENTS = {
     "Pandemia\nCOVID-19": pd.Timestamp("2020-03-01"),
     "Programa\nDesenrola": pd.Timestamp("2023-06-01"),
+}
+
+# Novo Desenrola Brasil: launched on 4 May 2026 (MP 1.355), with
+# renegotiations starting on 5 May. Use May for this monthly series.
+# Source: https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2026/mpv/mpv1355.htm
+KEY_EVENTS = {
+    **_HISTORICAL_EVENTS,
+    "Novo\nDesenrola": pd.Timestamp("2026-05-01"),
 }
 
 COMP_LABELS = {
@@ -197,9 +205,14 @@ def _style_ax(ax, xlabel: str = None, ylabel: str = None, ylim: tuple = None) ->
         ax.set_ylim(*ylim)
 
 
-def _add_events(ax, show_labels: bool = True, label_positions: Optional[dict] = None) -> list:
+def _add_events(
+    ax,
+    show_labels: bool = True,
+    label_positions: Optional[dict] = None,
+    events: Optional[dict] = None,
+) -> list:
     event_texts = []
-    for label, date in KEY_EVENTS.items():
+    for label, date in (KEY_EVENTS if events is None else events).items():
         ax.axvline(date, color="#BBBBBB", linestyle="--", linewidth=0.9, zorder=1)
         if show_labels:
             pos = (label_positions or {}).get(label, {})
@@ -303,6 +316,7 @@ def _label_specs(
     include_post_pandemic_min: bool = False,
     include_post_desenrola_min: bool = False,
     event_anchor_dates: Optional[dict] = None,
+    events: Optional[dict] = None,
 ) -> list:
     s = series.dropna()
     specs = []
@@ -338,7 +352,7 @@ def _label_specs(
         )
 
     if include_events:
-        for ev_label, ev_date in KEY_EVENTS.items():
+        for ev_label, ev_date in (KEY_EVENTS if events is None else events).items():
             date = (event_anchor_dates or {}).get(ev_label)
             if date is None:
                 loc = s.index.get_indexer([ev_date], method="nearest")[0]
@@ -503,6 +517,7 @@ def _add_value_labels(
     event_anchor_dates: Optional[dict] = None,
     candidate_overrides: Optional[dict] = None,
     distance_weight: float = 0.25,
+    events: Optional[dict] = None,
 ) -> None:
     specs = _label_specs(
         series,
@@ -515,6 +530,7 @@ def _add_value_labels(
         include_post_pandemic_min=include_post_pandemic_min,
         include_post_desenrola_min=include_post_desenrola_min,
         event_anchor_dates=event_anchor_dates,
+        events=events,
     )
     for spec in specs:
         if not candidate_overrides:
@@ -551,6 +567,14 @@ def _add_value_labels(
 
 
 _CLOSE_LABEL_OVERRIDES = {
+    "event::Novo\nDesenrola": [
+        (6, -7, "left", "top"),
+        (8, -8, "left", "top"),
+        (10, -10, "left", "top"),
+        (6, 7, "left", "bottom"),
+        (-6, -14, "right", "top"),
+        (-12, -18, "right", "top"),
+    ],
     "start": [
         (6, 3, "left", "bottom"),
         (6, -3, "left", "top"),
@@ -601,10 +625,14 @@ def _save(fig, filename: str) -> None:
     print(f"  {filename}")
 
 
-def _local_peak_dates_near_events(series: pd.Series, window_months: int = 6) -> dict:
+def _local_peak_dates_near_events(
+    series: pd.Series,
+    window_months: int = 6,
+    events: Optional[dict] = None,
+) -> dict:
     s = series.dropna()
     anchor_dates = {}
-    for ev_label, ev_date in KEY_EVENTS.items():
+    for ev_label, ev_date in (KEY_EVENTS if events is None else events).items():
         start = ev_date - pd.DateOffset(months=window_months)
         end = ev_date + pd.DateOffset(months=window_months)
         window = s.loc[(s.index >= start) & (s.index <= end)]
@@ -673,6 +701,13 @@ def _plot_raw_component_panel(
         ylim=(ymin - rng * 0.05, ymax + rng * 0.20),
     )
     ax.set_title(COMP_LABELS[comp])
+    event_positions = {
+        "Novo\nDesenrola": {
+            "coords": "data",
+            "y": {"C": 25.0, "I": 5.5, "Q": 22.0}[comp],
+        },
+        **(event_positions or {}),
+    }
     event_texts = _add_events(ax, show_labels=show_event_labels, label_positions=event_positions)
     _add_value_labels(
         ax,
@@ -726,7 +761,9 @@ def _plot_components_raw(components: pd.DataFrame) -> None:
                     (-4, 7, "right", "bottom"),
                 ],
             }
-            event_anchor_dates = _local_peak_dates_near_events(series, window_months=6)
+            event_anchor_dates = _local_peak_dates_near_events(
+                series, window_months=6, events=_HISTORICAL_EVENTS,
+            )
         elif comp == "I":
             candidate_overrides = {
                 **_CLOSE_LABEL_OVERRIDES,
@@ -835,7 +872,9 @@ def _plot_components_raw_individual(components: pd.DataFrame) -> None:
                     (-4, 7, "right", "bottom"),
                 ],
             }
-            event_anchor_dates = _local_peak_dates_near_events(series, window_months=6)
+            event_anchor_dates = _local_peak_dates_near_events(
+                series, window_months=6, events=_HISTORICAL_EVENTS,
+            )
         elif comp == "I":
             candidate_overrides = {
                 **_CLOSE_LABEL_OVERRIDES,
@@ -918,10 +957,13 @@ def _plot_components_normalized(index_df: pd.DataFrame) -> None:
             label=COMP_LABELS[comp], color=COMP_COLORS[comp],
         )
 
+    # Leave room for the event label near the latest observations.
+    ax.margins(x=0.06)
     _style_ax(ax, ylabel="[0 – 1]", ylim=(-0.02, 1.05))
     _add_events(ax, label_positions={
         "Pandemia\nCOVID-19": {"coords": "data", "y": 0.80, "ha": "center", "va": "center"},
         "Programa\nDesenrola": {"coords": "data", "y": 0.25, "ha": "center", "va": "center"},
+        "Novo\nDesenrola": {"coords": "data", "y": 0.65, "ha": "center", "va": "center"},
     })
     ax.legend(
         loc="upper center",
@@ -954,12 +996,21 @@ def _plot_index(index_df: pd.DataFrame) -> None:
             "ha": "center",
             "va": "center",
         },
+        "Novo\nDesenrola": {
+            "coords": "data",
+            "y": 0.85,
+            "ha": "center",
+            "va": "center",
+        },
     })
     legend = ax.legend(loc="upper left")
     ax.set_title("Índice de Desconforto de Crédito — Min-Max — Janela Expansiva")
 
     fig.tight_layout()
-    event_anchor_dates = _local_peak_dates_near_events(index_df["index"], window_months=6)
+    # Preserve the historical peak labels; label the new event at its own month.
+    event_anchor_dates = _local_peak_dates_near_events(
+        index_df["index"], window_months=6, events=_HISTORICAL_EVENTS,
+    )
     _add_value_labels(
         ax,
         index_df["index"],
@@ -1015,6 +1066,16 @@ def _plot_index(index_df: pd.DataFrame) -> None:
                 (8, -4, "left", "top"),
                 (-8, 4, "right", "bottom"),
                 (-8, -4, "right", "top"),
+            ],
+            "event::Novo\nDesenrola": [
+                (-6, -14, "right", "top"),
+                (-12, -18, "right", "top"),
+                (-6, -3, "right", "top"),
+                (-6, 3, "right", "bottom"),
+                (-8, -4, "right", "top"),
+                (-8, 4, "right", "bottom"),
+                (-10, 0, "right", "center"),
+                (-10, -6, "right", "top"),
             ],
             "post_pandemic_min": [
                 (8, 0, "left", "center"),

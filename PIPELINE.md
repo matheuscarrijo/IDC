@@ -320,7 +320,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 | `\mespublicacao` | Full Portuguese month and year of the release | `maio de 2026` |
 | `\proxdivulgacao` | Next publication month (release month + 1) | `junho de 2026` |
 | `\mesproximo` | Next reference month (reference month + 1) | `abr-2026` |
-| `\reportdate` | Today's date in full Portuguese | `28 de maio de 2026` |
+| `\reportdate` | Nominal BCB publication/release month in full Portuguese, initial capital, without the day | `Maio de 2026` |
 | `\reportsubtitle` | Must name both publication and reference months | `Nota Técnica de Atualização --- Divulgação maio de 2026; competência março de 2026` |
 | IDC table value | Last value of `index` column | `0,954` |
 | C raw/norm, I raw/norm, Q raw/norm | Last row of `components_raw.csv` and `index.csv` | `29,3% / 0,968`, … |
@@ -343,6 +343,7 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 - Use comma as decimal separator (e.g. `0,954` not `0.954`).
 - Remove each `\placeholder{...}` wrapper and replace the whole command with the written text.
 - The report subtitle must make clear that the update/publication month and IDC reference month can differ. Use the pattern `Divulgação <mês de publicação>; competência <mês de referência>`.
+- The cover date (`\reportdate`) uses the nominal BCB publication/release month in `Mês de AAAA` format, with an initial capital and no day (e.g. `Setembro de 2026` for release `202609`). It must agree with `\mespublicacao`, even if the report is generated during a retry in the following month; do not use today's date or the IDC observation month. Keep the observation months in the body, tables, captions, and charts tied to the actual data.
 - A month-over-month figure in the results section must use two observations from the current BCB vintage. Never mix vintages. Explain the difference from the value printed in the prior report only when the revision is publicly material and `Revisões dos dados` is present; otherwise the fixed methodological note is sufficient.
 - Use `\textbf{}` only for numbers, percentages, deltas, and abbreviated month-year values such as `mar-2026`. Do not bold indicator names, institution names, prose labels, or explanatory phrases in running text.
 - Keep every figure's source note inside the same `figure` environment as its `\caption{...}`. Do not place `\fonte{BCB, elaboração própria.}` after `\end{figure}`.
