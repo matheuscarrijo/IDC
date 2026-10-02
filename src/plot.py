@@ -26,7 +26,7 @@ KEY_EVENTS = {
 COMP_LABELS = {
     "C": "Comprometimento de Renda",
     "I": "Inadimplência (90+ dias)",
-    "Q": "Qualidade do Crédito",
+    "Q": "Crédito oneroso",
 }
 
 # Excel default Office color palette

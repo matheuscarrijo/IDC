@@ -200,7 +200,7 @@ C e I marcaram \textbf{1,000}, enquanto Q ficou em \textbf{0,888}.
   \centering
   \caption{Componentes brutos e valores normalizados do IDC --- \mesref.}
   \label{tab:componentes}
-  \begin{tabular}{p{8.0cm}rr}
+  \begin{tabular}{>{\raggedright\arraybackslash}p{8.0cm}rr}
     \toprule
     Indicador & Valor bruto & Valor normalizado \\
     \midrule
@@ -213,7 +213,7 @@ C e I marcaram \textbf{1,000}, enquanto Q ficou em \textbf{0,888}.
     I --- Inadimplência da carteira de crédito livre PF (90+ dias)
       & 7,8\%
       & 1,000 \\
-    Q --- Participação das modalidades onerosas no crédito livre PF
+    Q --- Participação do crédito oneroso no crédito livre PF
       & 24,4\%
       & 0,888 \\
     \bottomrule
@@ -240,7 +240,7 @@ permaneceu estável.
     \textbf{0,943} para \textbf{1,000}. A taxa bruta atingiu o maior nível
     no horizonte calculável do IDC e respondeu pela alta mensal do índice.
 
-  \item Qualidade do crédito (Q) caiu de \textbf{24,5\%} para
+  \item Participação do crédito oneroso (Q) caiu de \textbf{24,5\%} para
     \textbf{24,4\%} (\textbf{-0,1~p.p.}, com base nos valores não arredondados),
     e seu valor normalizado recuou de \textbf{0,907} para \textbf{0,888}.
     A menor participação das modalidades onerosas no crédito livre PF
@@ -289,9 +289,10 @@ Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir 
 três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
 comprometimento de renda das famílias com o serviço da dívida (SGS~29034), inadimplência
 da carteira de crédito livre PF --- atrasos superiores a 90 dias (SGS~21112) --- e
-participação das modalidades onerosas (cheque especial, SGS~20573; crédito pessoal não
-consignado, SGS~20574; cartão de crédito rotativo, SGS~20587; cartão de crédito parcelado,
-SGS~20588) no total do crédito livre para pessoa física (SGS~20570). Cada componente é
+participação do crédito oneroso, definida como a parcela do saldo total de crédito
+livre para pessoa física (SGS~20570) nas modalidades cheque especial (SGS~20573), crédito
+pessoal não consignado (SGS~20574), cartão de crédito rotativo (SGS~20587) e cartão de
+crédito parcelado (SGS~20588). Cada componente é
 normalizado pelo método min-max com janela expansiva, a partir de \seriesinicio; o índice
 é exibido a partir de \janelainicio, após o período de aquecimento da janela, e corresponde
 à média simples dos três componentes normalizados, contido no intervalo [0,~1]. Por
