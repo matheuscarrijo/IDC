@@ -1,0 +1,18 @@
+{
+  "status": "ok",
+  "motivo": "",
+  "mes_referencia": "2026-07",
+  "conciliacao": {
+    "I_scr_t1": 8.0521,
+    "I_sgs_t1": 7.8,
+    "Q_scr_t1": 24.0432,
+    "Q_sgs_t1": 24.3772,
+    "gap_I_nivel": 0.2521,
+    "gap_Q_nivel": -0.334,
+    "gap_I_delta": 0.1394,
+    "gap_Q_delta": -0.2488,
+    "gap_carteira_pct": 0.9118,
+    "status": "alerta",
+    "status_Q": "ok"
+  }
+}
