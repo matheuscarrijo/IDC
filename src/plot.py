@@ -8,6 +8,8 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from src import plot_overlay as overlay
+
 FIGURES_DIR = Path("outputs/figures")
 
 _HISTORICAL_EVENTS = {
@@ -727,7 +729,15 @@ def _plot_raw_component_panel(
     )
 
 
-def _plot_components_raw(components: pd.DataFrame) -> None:
+def _overlay(draw, *args) -> None:
+    """Draw the optional low-income lines; a failure leaves the figure with the general series only."""
+    try:
+        draw(*args)
+    except Exception as exc:  # noqa: BLE001 - the general figures must be produced whatever happens here
+        print(f"  aviso: linhas de baixa renda omitidas ({exc!r})")
+
+
+def _plot_components_raw(components: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
     """Three stacked panels (shared x-axis) — fits A4 page width."""
     fig, axes = plt.subplots(3, 1, figsize=(_FIG_W, 7.2), sharex=True)
     fig.subplots_adjust(hspace=0.4)
@@ -838,10 +848,12 @@ def _plot_components_raw(components: pd.DataFrame) -> None:
         "Componentes do Índice — Valores Brutos (não normalizados)",
         fontsize=14, fontweight="bold", y=1.01,
     )
+    if low_income is not None:
+        _overlay(overlay.components_raw, fig, low_income)
     _save(fig, "components_raw.png")
 
 
-def _plot_components_raw_individual(components: pd.DataFrame) -> None:
+def _plot_components_raw_individual(components: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
     configs = [
         ("C", components["C"], "% da renda", "components_raw_c.png"),
         ("I", components["I"], "%", "components_raw_i.png"),
@@ -945,10 +957,12 @@ def _plot_components_raw_individual(components: pd.DataFrame) -> None:
             candidate_overrides=candidate_overrides,
         )
         fig.tight_layout()
+        if low_income is not None and comp in ("I", "Q"):
+            _overlay(overlay.component_single, fig, comp, low_income)
         _save(fig, filename)
 
 
-def _plot_components_normalized(index_df: pd.DataFrame) -> None:
+def _plot_components_normalized(index_df: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
     fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_H))
 
     for comp in ["C", "I", "Q"]:
@@ -974,10 +988,12 @@ def _plot_components_normalized(index_df: pd.DataFrame) -> None:
     ax.set_title("Componentes Normalizados — Min-Max — Janela Expansiva")
 
     fig.tight_layout(rect=[0, 0.06, 1, 1])
+    if low_income is not None:
+        _overlay(overlay.normalized, fig, low_income, COMP_COLORS)
     _save(fig, "components_normalized.png")
 
 
-def _plot_index(index_df: pd.DataFrame) -> None:
+def _plot_index(index_df: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
     # Figure 1 has its own full-width annex page. A square source uses the page
     # vertically without changing fonts, the 150 mm width, or the data scale.
     fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_W))
@@ -1096,13 +1112,16 @@ def _plot_index(index_df: pd.DataFrame) -> None:
         },
         distance_weight=1.0,
     )
+    if low_income is not None:
+        _overlay(overlay.index, fig, low_income)
     _save(fig, "index.png")
 
 
-def plot_all(components: pd.DataFrame, index_df: pd.DataFrame) -> None:
+def plot_all(components: pd.DataFrame, index_df: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
+    """Save the six figures; ``low_income`` (see ``src.low_income``) adds the low-income series to four of them."""
     _apply_excel_style()
     print("Salvando figuras em outputs/figures/:")
-    _plot_components_raw(components)
-    _plot_components_raw_individual(components)
-    _plot_components_normalized(index_df)
-    _plot_index(index_df)
+    _plot_components_raw(components, low_income)
+    _plot_components_raw_individual(components, low_income)
+    _plot_components_normalized(index_df, low_income)
+    _plot_index(index_df, low_income)

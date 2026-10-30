@@ -7,6 +7,7 @@ from zipfile import ZipFile
 import pandas as pd
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from src import low_income
 from src.build_index import build_components, build_index
 from src.load_data import load_raw_series
 from src.plot import plot_all
@@ -17,6 +18,8 @@ README_LATEST_START = "<!-- IDC_LATEST_START -->"
 README_LATEST_END = "<!-- IDC_LATEST_END -->"
 README_STATS_START = "<!-- IDC_STATS_START -->"
 README_STATS_END = "<!-- IDC_STATS_END -->"
+README_LOW_INCOME_START = "<!-- IDC_LOW_INCOME_START -->"
+README_LOW_INCOME_END = "<!-- IDC_LOW_INCOME_END -->"
 
 PT_MONTH_ABBR = {
     1: "jan", 2: "fev", 3: "mar", 4: "abr",
@@ -60,9 +63,17 @@ def main() -> None:
 
     _write_excel_safely(index_excel, components_excel, excel_path)
 
-    _update_readme(components, index_df)
-    plot_all(components, index_df)
-    _print_summary(index_df)
+    print("Calculando o IDC para baixa renda (SCR.data)...")
+    try:
+        low = low_income.calcular(components, raw)
+    except Exception as exc:  # noqa: BLE001 - the general IDC must never depend on the optional low-income step
+        low = low_income.Resultado("sem_dados", f"erro inesperado ao calcular o índice ({exc!r})", t1=index_df.index[-1])
+    low_income.gravar(low)
+    print(f"  {_low_income_message(low)}")
+
+    _update_readme(components, index_df, low)
+    plot_all(components, index_df, low_income=low.serie if low.disponivel else None)
+    _print_summary(index_df, low)
 
 
 def _write_excel_safely(index_excel, components_excel, excel_path: Path) -> None:
@@ -119,7 +130,14 @@ def _format_excel_sheet(worksheet, column_widths: dict[str, int], number_formats
             cell.number_format = number_format
 
 
-def _print_summary(index_df) -> None:
+def _low_income_message(low) -> str:
+    if low.disponivel:
+        status = "ok" if low.conciliacao.get("status") == "ok" and low.conciliacao.get("status_Q") == "ok" else "ok, com alerta de conciliação"
+        return f"Status: {status} — último dado {low.t1:%b-%Y}, IDC baixa renda {low.serie['IDC'].iloc[-1]:.3f}"
+    return f"Status: {low.status} — IDC para baixa renda não atualizado nesta edição ({low.motivo})"
+
+
+def _print_summary(index_df, low=None) -> None:
     s = index_df["index"].dropna()
     last_date = s.index[-1].strftime("%b-%Y")
     print(f"\nÍndice de Desconforto de Crédito — último dado: {last_date}")
@@ -129,8 +147,18 @@ def _print_summary(index_df) -> None:
         f"  {s.iloc[-1]:8.3f} {s.mean():8.3f}"
         f" {s.std():8.3f} {s.min():8.3f} {s.max():8.3f}"
     )
+    if low is not None and low.disponivel:
+        b = low.serie["IDC"].dropna()
+        print(f"\nIDC para baixa renda (até 2 SM) — último dado: {b.index[-1].strftime('%b-%Y')}")
+        print(
+            f"  {b.iloc[-1]:8.3f} {b.mean():8.3f}"
+            f" {b.std():8.3f} {b.min():8.3f} {b.max():8.3f}"
+        )
+    elif low is not None:
+        print(f"\nIDC para baixa renda não atualizado: {low.motivo}")
     print("\nOutputs salvos em:")
-    print("  data/processed/   — series_raw.csv, components_raw.csv, index.csv, idc_data.xlsx")
+    print("  data/processed/   — series_raw.csv, components_raw.csv, index.csv, idc_data.xlsx,")
+    print("                      low_income_idc.csv, low_income_status.json")
     print("  outputs/figures/  — 6 figuras (PNG)")
 
 
@@ -174,6 +202,27 @@ def _readme_latest_table(components, index_df) -> str:
     return "\n".join(table)
 
 
+def _readme_low_income_table(low) -> str:
+    """Latest values of the low-income IDC, or the reason why it was not updated in this edition."""
+    if not low.disponivel:
+        return f"IDC para baixa renda não atualizado nesta edição: {low.motivo}."
+    serie = low.serie
+    last = serie.index[-1]
+    row = serie.loc[last]
+    shown = serie["IDC"].loc[low_income.primeira_exibicao():].dropna()
+    table = [
+        "| Indicador | Valor bruto | Valor normalizado |", "|---|---:|---:|",
+        f"| IDC baixa renda | — | **{_format_pt_decimal(row['IDC'])}** |",
+        f"| C — comprometimento de renda (nacional) | — | {_format_pt_decimal(row['C_norm'])} |",
+        f"| I — inadimplência 90+ dias (até 2 SM) | {_format_pt_percent(row['I'])} | {_format_pt_decimal(row['I_norm'])} |",
+        f"| Q — crédito oneroso (até 2 SM) | {_format_pt_percent(row['Q'])} | {_format_pt_decimal(row['Q_norm'])} |",
+        "",
+        f"Último dado: {_format_pt_period(last)}; série exibida desde {_format_pt_period(shown.index[0])} "
+        f"(média {_format_pt_decimal(shown.mean())}, mínimo {_format_pt_decimal(shown.min())}, máximo {_format_pt_decimal(shown.max())}).",
+    ]
+    return "\n".join(table)
+
+
 def _readme_stats_table(index_df) -> str:
     s = index_df["index"].dropna()
     last_date = _format_pt_period(s.index[-1])
@@ -207,7 +256,7 @@ def _replace_readme_block(readme: str, start_marker: str, end_marker: str, conte
     return readme[:start] + replacement + readme[end + len(end_marker):]
 
 
-def _update_readme(components, index_df, readme_path: Path = README_PATH) -> None:
+def _update_readme(components, index_df, low, readme_path: Path = README_PATH) -> None:
     readme = readme_path.read_text(encoding="utf-8")
     updated = _replace_readme_block(
         readme,
@@ -220,6 +269,12 @@ def _update_readme(components, index_df, readme_path: Path = README_PATH) -> Non
         README_STATS_START,
         README_STATS_END,
         _readme_stats_table(index_df),
+    )
+    updated = _replace_readme_block(
+        updated,
+        README_LOW_INCOME_START,
+        README_LOW_INCOME_END,
+        _readme_low_income_table(low),
     )
     readme_path.write_text(updated, encoding="utf-8")
 

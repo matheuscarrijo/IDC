@@ -1,0 +1,6 @@
+cri_faixa_ref202504.csv
+Fonte: Banco Central do Brasil, Relatório de Estabilidade Financeira (abril de 2025), Anexo Estatístico, Gráfico 1.2.2.16:
+Comprometimento de renda individual (CRI), média aparada a 1%, por faixa de renda, com ajuste sazonal (% da renda mensal).
+URL do anexo: https://www.bcb.gov.br/content/publicacoes/ref/202504/RELESTAB202504-refAnexoEstatistico.xlsx (aba "Graf 1.2.2.16").
+Cobertura: dez/2018 a dez/2024 (73 meses). As edições de out/2025 e mai/2026 do REF não trazem mais o CRI por faixa de renda.
+Uso: teste de validade do C nacional como componente do IDC por faixa de renda (apêndice estatístico, seção sobre o IDC por faixa de renda).
