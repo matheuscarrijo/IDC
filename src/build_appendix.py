@@ -189,6 +189,7 @@ def document(d: DadosApendice, report_tex: str, draft: bool = False) -> str:
 \thispagestyle{{firstpage}}
 
 \tableofcontents
+\clearpage
 """
     return preamble(report_tex) + start + montar_corpo(d) + "\n\\end{document}\n"
 
