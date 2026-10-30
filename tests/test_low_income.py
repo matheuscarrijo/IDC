@@ -148,6 +148,36 @@ class FatosBaixaRendaTests(unittest.TestCase):
         f = self.fatos()
         self.assertIn("acima do IDC geral", LI.pars_resultados(f))
 
+    def test_rounding_qualifier_appears_only_where_the_printed_levels_disagree_with_the_printed_change(self):
+        f = self.fatos()
+        f.idc.update({"tprev": 0.9626, "t1": 0.9737})      # 0,963 -> 0,974: the printed change (0,011) agrees
+        f.i.update({"tprev": 10.633, "t1": 10.8155})       # 10,63 -> 10,82 but the change is +0,18
+        f.q.update({"tprev": 26.50, "t1": 26.92})          # 26,50 -> 26,92: +0,42 agrees
+        texto = LI.pars_resultados(f)
+        self.assertEqual(texto.count(LI.NOTA_ARREDONDAMENTO), 1)
+        self.assertIn(r"\textbf{+0,18~p.p.}, " + LI.NOTA_ARREDONDAMENTO + ")", texto)
+        self.assertNotIn(LI.NOTA_ARREDONDAMENTO, LI.par_resumo(f))
+        f.idc.update({"tprev": 0.9626, "t1": 0.9664})      # 0,963 -> 0,966 but the change is +0,004
+        self.assertIn(r"\textbf{0,004~ponto} (" + LI.NOTA_ARREDONDAMENTO + ")", LI.par_resumo(f))
+        self.assertIn(r"\textbf{0,004~ponto} (" + LI.NOTA_ARREDONDAMENTO + ")", LI.pars_resultados(f))
+
+    def test_relative_position_wording_follows_the_normalised_values(self):
+        f = self.fatos()
+        casos = ((1.0, 1.0, "é a mesma (", ", mas a posição"), (0.995, 1.0, "é próxima (", ", mas a posição"),
+                 (0.6, 1.0, "difere (", ", e a posição"))
+        for grupo, total, esperado, conjuncao in casos:
+            f.i["norm_t1"], f.geral["I_norm_t1"] = grupo, total
+            texto = LI.pars_resultados(f)
+            self.assertIn(esperado, texto)
+            self.assertIn(conjuncao, texto)
+
+    def test_group_delinquency_is_compared_with_the_total_in_either_direction(self):
+        f = self.fatos()
+        f.i["t1"], f.geral["I_t1"] = 9.0, 8.0
+        self.assertIn(" é maior que a do total", LI.pars_resultados(f))
+        f.i["t1"] = 7.0
+        self.assertIn(" é menor que a do total", LI.pars_resultados(f))
+
     def test_components_table_has_the_two_indices_side_by_side(self):
         tex = LI.tabela_componentes(self.fatos())
         self.assertIn(r"\multicolumn{2}{c}{IDC geral}", tex)

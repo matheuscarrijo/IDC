@@ -176,13 +176,31 @@ def _verbo(delta: float, subiu="subiu", caiu="recuou", igual="ficou estável") -
     return subiu if delta > 0 else caiu
 
 
+NOTA_ARREDONDAMENTO = "com base nos valores não arredondados"
+
+
+def _inconsistente(t0: float, t1: float, nd: int) -> bool:
+    """True when the difference of the printed levels is not the printed change (both rounded to ``nd`` places)."""
+    return abs((round(t1, nd) - round(t0, nd)) - round(t1 - t0, nd)) >= 0.5 * 10 ** -nd
+
+
+def _posicao(grupo: float, total: float) -> tuple[str, str]:
+    """Conjunction and phrase comparing the normalised position of the group's I with that of the total I."""
+    if round(grupo, 3) == round(total, 3):
+        return "mas", f"é a mesma ({bn(grupo, 3)} nos dois casos)"
+    if abs(grupo - total) <= 0.05:
+        return "mas", f"é próxima ({bn(grupo, 3)} e {bn(total, 3)})"
+    return "e", f"difere ({bn(grupo, 3)} no grupo e {bn(total, 3)} no total)"
+
+
 # --------------------------------------------------------------------------- blocks of the monthly report
 def par_resumo(f: FatosBaixaRenda) -> str:
     d = f.idc["t1"] - f.idc["tprev"]
+    nota_d = f" ({NOTA_ARREDONDAMENTO})" if _inconsistente(f.idc["tprev"], f.idc["t1"], 3) else ""
     return (
         f"O IDC para a população de baixa renda --- tomadores pessoa física com renda de até 2 salários mínimos, incluindo os sem rendimento --- "
-        f"foi de {bn(f.idc['t1'], 3)} em {bmes(f.t1)}, com {'alta' if d > 0 else 'queda'} de {bponto(d)} em relação aos {bn(f.idc['tprev'], 3)} de "
-        f"{bmes(f.tprev)}. Esse índice mantém o C do IDC geral e usa o I e o Q do crédito livre tomado por esse grupo, que marcaram "
+        f"foi de {bn(f.idc['t1'], 3)} em {bmes(f.t1)}, com {'alta' if d > 0 else 'queda'} de {bponto(d)}{nota_d} em relação aos "
+        f"{bn(f.idc['tprev'], 3)} de {bmes(f.tprev)}. Esse índice mantém o C do IDC geral e usa o I e o Q do crédito livre tomado por esse grupo, que marcaram "
         f"{bn(f.i['norm_t1'], 3)} e {bn(f.q['norm_t1'], 3)} na escala normalizada. O resultado foi o {ordinal(f.rank)} maior entre as "
         f"{b(str(f.n_obs))} observações válidas desde {bmes(f.inicio)}."
     )
@@ -204,17 +222,22 @@ def pars_resultados(f: FatosBaixaRenda) -> str:
              else f"{_verbo(di, 'avançou', 'recuou')} de {bpct(f.i['tprev'], 2)} para {bpct(f.i['t1'], 2)}")
     mov_q = (f"ficou estável em {bpct(f.q['t1'], 2)}" if round(f.q["tprev"], 2) == round(f.q["t1"], 2)
              else f"{_verbo(dq, 'subiu', 'caiu')} de {bpct(f.q['tprev'], 2)} para {bpct(f.q['t1'], 2)}")
+    nota_d = f" ({NOTA_ARREDONDAMENTO})" if _inconsistente(f.idc["tprev"], f.idc["t1"], 3) else ""
+    nota_i = f", {NOTA_ARREDONDAMENTO}" if _inconsistente(f.i["tprev"], f.i["t1"], 2) else ""
+    nota_q = f", {NOTA_ARREDONDAMENTO}" if _inconsistente(f.q["tprev"], f.q["t1"], 2) else ""
     p1 = (
-        f"No grupo de baixa renda, o IDC {_verbo(d)} {bponto(d)} em {bmes(f.t1)}, de {bn(f.idc['tprev'], 3)} para {bn(f.idc['t1'], 3)}, "
+        f"No grupo de baixa renda, o IDC {_verbo(d)} {bponto(d)}{nota_d} em {bmes(f.t1)}, de {bn(f.idc['tprev'], 3)} para {bn(f.idc['t1'], 3)}, "
         f"{comparacao}. A inadimplência (I) do grupo {mov_i} "
-        f"({bpp(di)}){destaque_i}, e seu valor normalizado passou de {bn(f.i['norm_tprev'], 3)} para {bn(f.i['norm_t1'], 3)}. "
+        f"({bpp(di)}{nota_i}){destaque_i}, e seu valor normalizado passou de {bn(f.i['norm_tprev'], 3)} para {bn(f.i['norm_t1'], 3)}. "
         f"A participação do crédito oneroso (Q) {mov_q} "
-        f"({bpp(dq)}), com valor normalizado de {bn(f.q['norm_t1'], 3)}."
+        f"({bpp(dq)}{nota_q}), com valor normalizado de {bn(f.q['norm_t1'], 3)}."
     )
+    conjuncao, posicao = _posicao(f.i["norm_t1"], f.geral["I_norm_t1"])
+    nivel = "maior" if f.i["t1"] > f.geral["I_t1"] else "menor"
     p2 = (
-        f"Como C é o mesmo nos dois índices, a diferença entre eles decorre apenas de I e Q: a inadimplência do grupo ({bpct(f.i['t1'], 2)}) é maior "
-        f"que a do total ({bpct(f.geral['I_t1'], 1)}), mas a posição de cada série em sua própria história é próxima ({bn(f.i['norm_t1'], 3)} "
-        f"e {bn(f.geral['I_norm_t1'], 3)}). Assim como o IDC geral, o índice para baixa renda mede posição relativa no histórico do próprio grupo, "
+        f"Como C é o mesmo nos dois índices, a diferença entre eles decorre apenas de I e Q: a inadimplência do grupo ({bpct(f.i['t1'], 2)}) é {nivel} "
+        f"que a do total ({bpct(f.geral['I_t1'], 1)}), {conjuncao} a posição de cada série em sua própria história {posicao}. "
+        f"Assim como o IDC geral, o índice para baixa renda mede posição relativa no histórico do próprio grupo, "
         f"e não o nível absoluto de desconforto."
     )
     return p1 + "\n\n" + p2
