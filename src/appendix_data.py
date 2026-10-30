@@ -172,7 +172,7 @@ def tab_evolucao(d: DadosApendice) -> str:
         ["Indicador", mes(t0), mes(tp), mes(t1), "Δ mês", "Δ 12 meses"], linhas,
         r">{\raggedright\arraybackslash}p{5.6cm}rrrrr",
         "Banco Central do Brasil (SGS e SCR.data), elaboração própria. C: SGS 29034; I geral: SGS 21112. Componentes brutos com duas casas decimais (a Nota usa uma). "
-        "Variações dos índices em pontos; dos componentes, em p.p.", tamanho=r"\small", separadores=(1,), posicao="H")
+        "Variações dos índices em pontos; dos componentes, em p.p.; todas calculadas sobre os valores não arredondados.", tamanho=r"\small", separadores=(1,), posicao="H")
 
 
 def tab_anual(d: DadosApendice) -> str:

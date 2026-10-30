@@ -12,6 +12,7 @@ from src import lenses as L
 from src.income_idc import BAIXA_RENDA, c_normalizado, indice_por_faixa
 from src.normalize import expanding_minmax
 from src.ref_check import avaliar_c_nacional
+from src.pt_format import tabela_latex
 from synthetic import componentes, faixa_bruta
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -84,6 +85,12 @@ class CNacionalTests(unittest.TestCase):
 
 
 class TabelasDoApendiceTests(unittest.TestCase):
+    def test_a_table_is_scaled_to_the_text_width_only_when_it_is_wider(self):
+        tex = tabela_latex("Titulo.", "tab:x", ["A", "B"], [["1", "2"]], "lr", "origem")
+        self.assertIn(r"\begin{adjustbox}{max width=\textwidth}", tex)
+        self.assertLess(tex.index(r"\end{tabular}"), tex.index(r"\end{adjustbox}"))
+        self.assertLess(tex.index(r"\end{adjustbox}"), tex.index(r"\end{table}"))
+
     def test_source_note_moves_inside_the_float_and_the_table_floats(self):
         entrada = "\\begin{table}[H]\n  corpo (ver Notas)\n\\end{table}\n\n\\fonte{origem}\n"
         saida = AP.preparar_tabela(entrada)

@@ -136,6 +136,7 @@ def document(d: DadosApendice, report_tex: str, draft: bool = False) -> str:
 %   DADOS DO RELATÓRIO — Apêndice Estatístico do IDC
 % =============================================================================
 \usepackage{{amsmath}}
+\usepackage{{adjustbox}}
 \renewcommand{{\topfraction}}{{0.9}}
 \renewcommand{{\bottomfraction}}{{0.8}}
 \renewcommand{{\textfraction}}{{0.1}}

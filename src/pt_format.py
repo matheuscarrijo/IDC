@@ -84,6 +84,7 @@ def tabela_latex(titulo: str, rotulo: str, cabecalho: list[str], linhas: list[li
         f"  \\setlength{{\\tabcolsep}}{{{tabcolsep}}}",
         f"  \\caption{{{titulo}}}",
         f"  \\label{{{rotulo}}}",
+        r"  \begin{adjustbox}{max width=\textwidth}",  # scales the table down only when it is wider than the text
         f"  \\begin{{tabular}}{{{colunas}}}",
         r"    \toprule",
         "    " + " & ".join(cabecalho) + r" \\",
@@ -91,6 +92,7 @@ def tabela_latex(titulo: str, rotulo: str, cabecalho: list[str], linhas: list[li
         *corpo,
         r"    \bottomrule",
         r"  \end{tabular}",
+        r"  \end{adjustbox}",
         r"\end{table}",
         "",
         f"\\fonte{{{fonte}}}",
