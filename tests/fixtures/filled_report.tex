@@ -1,0 +1,133 @@
+% Minimal filled monthly report used by the tests: same section structure as the local template
+% (outputs/report/template-latex/template.tex), with generic text.
+\documentclass[11pt,a4paper]{article}
+
+\newcommand{\reporttitle}{Índice de Desconforto de Crédito}
+\newcommand{\mesreferencia}{julho de 2026}
+\newcommand{\mesref}{jul-2026}
+\newcommand{\mesanterior}{jun-2026}
+\newcommand{\competencia}{202609}
+\newcommand{\mespublicacao}{setembro de 2026}
+\newcommand{\proxdivulgacao}{outubro de 2026}
+\newcommand{\mesproximo}{ago-2026}
+\newcommand{\janelainicio}{jan-2014}
+\newcommand{\seriesinicio}{mar-2011}
+\newcommand{\reportsubtitle}{Nota Técnica de Atualização --- Divulgação \mespublicacao; competência \mesreferencia}
+\newcommand{\reportdate}{Setembro de 2026}
+\newcommand{\authorone}{Lauro Gonzalez}
+\newcommand{\authortwo}{Matheus L. Carrijo}
+\newcommand{\authorthree}{Rafael Schiozer}
+
+\begin{document}
+
+\section{Resumo}
+
+Com a publicação, em \mespublicacao, das Estatísticas Monetárias e de Crédito do
+Banco Central do Brasil (competência \competencia), o Índice de Desconforto
+de Crédito (IDC) foi recalculado e estendido até \mesreferencia.
+
+Em \textbf{\mesref}, o IDC foi de \textbf{0,963}, com alta de \textbf{0,013~ponto}
+em relação aos \textbf{0,950} de \textbf{\mesanterior}.
+
+\section{Resultados de \mesreferencia}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Componentes brutos e valores normalizados do IDC --- \mesref.}
+  \label{tab:componentes}
+  \begin{tabular}{p{8.0cm}rr}
+    \toprule
+    Indicador & Valor bruto & Valor normalizado \\
+    \midrule
+    IDC (média dos componentes normalizados)
+      & ---
+      & \textbf{0,963} \\
+    C --- Comprometimento de renda das famílias com a dívida
+      & 28,7\%
+      & 1,000 \\
+    I --- Inadimplência da carteira de crédito livre PF (90+ dias)
+      & 7,8\%
+      & 1,000 \\
+    Q --- Participação das modalidades onerosas no crédito livre PF
+      & 24,4\%
+      & 0,888 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito,
+divulgação \competencia), elaboração própria.}
+
+Em relação à observação imediatamente anterior --- \textbf{\mesanterior}, quando o IDC
+marcava \textbf{0,950} --- o índice subiu \textbf{0,013~ponto} em \textbf{\mesref}.
+O movimento concentrou-se em I.
+
+\begin{itemize}
+  \item Comprometimento de renda (C) permaneceu em \textbf{28,7\%} (\textbf{0,0~p.p.}).
+
+  \item Inadimplência (I) avançou de \textbf{7,4\%} para \textbf{7,8\%} (\textbf{+0,4~p.p.}).
+
+  \item Qualidade do crédito (Q) caiu de \textbf{24,5\%} para \textbf{24,4\%} (\textbf{-0,1~p.p.}).
+\end{itemize}
+
+Em conjunto, os dados indicam aumento do desconforto agregado em \textbf{\mesref}.
+
+% SEÇÃO OPCIONAL — REVISÕES DOS DADOS
+% Não inclua essa seção no relatório mensal por padrão.
+
+\section{Trajetória do índice}
+
+A Figura~\ref{fig:indice} mostra a evolução do IDC; a Figura~\ref{fig:componentes}
+mostra as séries brutas de C, I e Q.
+\section{Próxima atualização}
+
+A próxima atualização é esperada para \proxdivulgacao; o IDC será estendido para
+\mesproximo{} caso a série de comprometimento de renda (SGS~29034) avance até lá.
+
+\section*{Notas}
+
+\begingroup\footnotesize
+
+Sobre o IDC. O Índice de Desconforto de Crédito (IDC) é construído a partir de
+três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil.
+
+Revisões dos dados. Os valores históricos do IDC são recalculados a cada edição
+com a safra mais recente dos dados do Banco Central. Revisões com efeito material
+sobre o índice ou sua interpretação são descritas no relatório; a série
+disponibilizada incorpora todas as revisões identificadas.
+
+Citação recomendada. Gonzalez, L.; Carrijo, M.~L.; Schiozer, R.
+\textit{Índice de Desconforto de Crédito (IDC).} FGVcemif/FGV-EAESP\@.
+\endgroup
+
+\clearpage
+\section*{Anexo de figuras}
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{index.png}{%
+    \includegraphics[width=\linewidth]{index.png}%
+  }{%
+    \fbox{\rule{0pt}{14cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução do Índice de Desconforto de Crédito (\janelainicio{} a \mesref).}
+  \label{fig:indice}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
+
+\clearpage
+\begin{figure}[H]
+  \centering
+  \IfFileExists{components_raw.png}{%
+    \includegraphics[width=\linewidth]{components_raw.png}%
+  }{%
+    \fbox{\rule{0pt}{17cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref).}
+  \label{fig:componentes}
+  \fonte{BCB, elaboração própria.}
+\end{figure}
+
+\end{document}

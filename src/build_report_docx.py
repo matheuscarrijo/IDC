@@ -33,6 +33,10 @@ PLACEHOLDER_RED = RGBColor(155, 35, 35)
 FIGURE_WIDTH_MM = 150.0
 FIGURE_MAX_HEIGHT_MM = {1: 150.0, 2: 180.0}
 FIGURE_PLACEHOLDER_HEIGHT_MM = {1: 140.0, 2: 170.0}
+# Widths (twips) of the results table by column count: 80/30/40 mm for the general IDC alone and
+# 58/19/26/19/26 mm when the low-income IDC is shown side by side (both fill the 150 mm text width).
+RESULTS_TABLE_WIDTHS = {3: [4535, 1700, 2269], 5: [3300, 1100, 1500, 1100, 1500]}
+SPAN = "\x00"  # content of a cell covered by the \multicolumn on its left
 NOTES_MIN_FONT_SIZE_PT = 9.0
 NOTES_FONT_SIZE_PT = 9.5
 NOTES_LINE_SPACING_PT = 13.0
@@ -753,12 +757,30 @@ def _source_note(document, source: str):
     return paragraph
 
 
+def _split_row(row_source: str) -> list[str]:
+    """Cells of one tabular row; a ``\\multicolumn{n}{c}{text}`` keeps its text and covers n columns (``SPAN``)."""
+    cells: list[str] = []
+    for raw in row_source.split("&"):
+        text = _collapse_source(raw)
+        match = re.match(r"\\multicolumn\s*", text)
+        if match:
+            span_text, position = _extract_group(text, match.end())
+            _, position = _extract_group(text, position)  # column alignment (ignored)
+            content, _ = _extract_group(text, position)
+            cells.append(content.strip())
+            cells.extend([SPAN] * (int(span_text) - 1))
+        else:
+            cells.append(text)
+    return cells
+
+
 def _parse_table(
     table_block: str,
     *,
-    expected_columns: int,
+    expected_columns: int | tuple[int, ...],
     table_name: str,
 ) -> tuple[str, list[list[str]], str | None]:
+    allowed = (expected_columns,) if isinstance(expected_columns, int) else tuple(expected_columns)
     caption = _command_argument(table_block, "caption")[0]
     source_match = _optional_command_argument(table_block, "fonte")
     source = source_match[0] if source_match else None
@@ -771,17 +793,20 @@ def _parse_table(
         raise ValueError("IDC tabular environment is missing its column specification")
     _, tabular_content_start = _extract_group(table_block, column_brace)
     tabular = table_block[tabular_content_start:tabular_end]
+    tabular = _strip_comments(tabular)
     tabular = re.sub(r"\\(?:toprule|midrule|bottomrule)", "", tabular)
+    tabular = re.sub(r"\\cmidrule(?:\([^)]*\))?\{[^}]*\}", "", tabular)
     rows: list[list[str]] = []
     for row_source in re.split(r"\\\\", tabular):
-        cells = [_collapse_source(cell) for cell in row_source.split("&")]
-        if len(cells) >= 2 and any(cells):
+        cells = _split_row(row_source)
+        if len(cells) >= 2 and any(cell and cell != SPAN for cell in cells):
             rows.append(cells)
     if not rows:
         raise ValueError(f"{table_name} is empty")
-    if any(len(row) != expected_columns for row in rows):
+    if any(len(row) not in allowed for row in rows) or len({len(row) for row in rows}) != 1:
+        wanted = " or ".join(str(n) for n in allowed)
         raise ValueError(
-            f"{table_name} must have exactly {expected_columns} columns"
+            f"{table_name} must have exactly {wanted} columns"
         )
     return caption, rows, source
 
@@ -831,7 +856,7 @@ def _parse_report(source: str) -> dict:
     table_end += len(r"\end{table}")
     table_caption, table_rows, table_source = _parse_table(
         expanded[table_start:table_end],
-        expected_columns=3,
+        expected_columns=tuple(RESULTS_TABLE_WIDTHS),
         table_name="The IDC results table",
     )
 
@@ -945,31 +970,49 @@ def _parse_report(source: str) -> dict:
 
 
 def _add_results_table(document, rows: list[list[str]]) -> None:
-    if not rows or any(len(row) != 3 for row in rows):
-        raise ValueError("The IDC results table must have exactly 3 columns")
-    table = document.add_table(rows=len(rows), cols=3)
+    columns = len(rows[0]) if rows else 0
+    if columns not in RESULTS_TABLE_WIDTHS or any(len(row) != columns for row in rows):
+        wanted = " or ".join(str(n) for n in RESULTS_TABLE_WIDTHS)
+        raise ValueError(f"The IDC results table must have exactly {wanted} columns")
+    widths = RESULTS_TABLE_WIDTHS[columns]
+    table = document.add_table(rows=len(rows), cols=columns)
     table.autofit = False
-    widths = [4535, 1700, 2269]  # 80 mm, 30 mm, 40 mm.
     _set_table_geometry(table, widths)
+    # A header with grouped columns (\multicolumn) takes two rows; otherwise a single one.
+    header_rows = 2 if len(rows) > 1 and any(SPAN in row for row in rows[:1]) else 1
     for row_index, row in enumerate(rows):
         for column_index, source in enumerate(row):
+            if source == SPAN:
+                continue
+            span = 1
+            while column_index + span < columns and row[column_index + span] == SPAN:
+                span += 1
             cell = table.cell(row_index, column_index)
+            if span > 1:
+                cell = cell.merge(table.cell(row_index, column_index + span - 1))
             paragraph = cell.paragraphs[0]
             paragraph.paragraph_format.space_before = Pt(0)
             paragraph.paragraph_format.space_after = Pt(0)
             paragraph.paragraph_format.line_spacing = 1.0
-            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if column_index == 0 else WD_ALIGN_PARAGRAPH.RIGHT
+            if span > 1:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            else:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if column_index == 0 else WD_ALIGN_PARAGRAPH.RIGHT
             _append_inline(paragraph, source)
             for run in paragraph.runs:
                 _set_run_font(run, SIGN_FONT if run.text == "+" else BODY_FONT, 10.5)
             border_values: dict[str, dict[str, str]] = {}
             if row_index == 0:
                 border_values["top"] = {"val": "single", "sz": "8", "color": "000000"}
+                if span > 1:  # the \cmidrule under a group of columns
+                    border_values["bottom"] = {"val": "single", "sz": "4", "color": "000000"}
+            if row_index == header_rows - 1:
                 border_values["bottom"] = {"val": "single", "sz": "4", "color": "000000"}
             if row_index == len(rows) - 1:
                 border_values["bottom"] = {"val": "single", "sz": "8", "color": "000000"}
             _set_cell_borders(cell, **border_values)
-    table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
+    for header_row in table.rows[:header_rows]:
+        header_row._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
 
 
 def _add_revision_table(document, rows: list[list[str]]) -> None:

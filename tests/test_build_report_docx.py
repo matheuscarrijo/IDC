@@ -9,6 +9,7 @@ from docx.shared import Mm
 from PIL import Image
 
 from src.build_report_docx import (
+    SPAN,
     _add_figure,
     _paragraph_fragments,
     _parse_report,
@@ -210,6 +211,21 @@ class BuildReportDocxTests(unittest.TestCase):
                 expected_columns=4,
                 table_name="The IDC revision table",
             )
+
+    def test_results_table_accepts_three_or_five_columns_only(self):
+        block = (r"\begin{table}\caption{x}\begin{tabular}{llll}\toprule a & b & c & d \\ \midrule 1 & 2 & 3 & 4 \\ \bottomrule"
+                 r"\end{tabular}\end{table}")
+        with self.assertRaisesRegex(ValueError, "exactly 3 or 5 columns"):
+            _parse_table(block, expected_columns=(3, 5), table_name="The IDC results table")
+
+    def test_table_parser_expands_a_multicolumn_header_and_ignores_cmidrule(self):
+        block = (r"\begin{table}\caption{x}\begin{tabular}{lrrrr}\toprule & \multicolumn{2}{c}{A} & \multicolumn{2}{c}{B} \\"
+                 r"\cmidrule(lr){2-3}\cmidrule(lr){4-5} Indicador & b & n & b & n \\ \midrule x & 1 & 2 & 3 & 4 \\ \bottomrule"
+                 r"\end{tabular}\end{table}")
+        _, rows, _ = _parse_table(block, expected_columns=(3, 5), table_name="t")
+        self.assertEqual(rows[0], ["", "A", SPAN, "B", SPAN])
+        self.assertEqual(rows[1], ["Indicador", "b", "n", "b", "n"])
+        self.assertEqual(rows[2], ["x", "1", "2", "3", "4"])
 
     @requires_local_files(FILLED_TEX)
     def test_parser_rejects_a_revision_section_without_its_table(self):
