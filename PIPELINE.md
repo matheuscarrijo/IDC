@@ -9,13 +9,15 @@ This document is written for automated agents executing the IDC monthly update. 
 ## What the pipeline does
 
 1. Downloads the new monthly BCB release (XLSX table + PDF report) from the BCB website.
-2. Rebuilds all three IDC components (C, I, Q) and the aggregate index from scratch.
-3. Saves processed CSVs and a consolidated Excel workbook to `data/processed/`.
-4. Regenerates the six PNG figures in `outputs/figures/`.
-5. Updates the two auto-managed tables and the latest-release narrative in `README.md`.
-6. **Generates the monthly update report** as matching `.tex`, `.pdf`, and editable `.docx` files in `outputs/report/update-YYYYMM/` (see [Report generation](#5-generate-the-monthly-report)).
-7. Runs PDF and DOCX content/style/layout reviews and fixes any issues before committing.
-8. Creates a git commit with the updated data, figures, documentation, and final monthly PDF. Report sources, build files, DOCX files, copied images, revision audits, and templates stay local and are ignored by Git.
+2. Refreshes the SCR.data aggregates (only the yearly ZIPs that changed) in `data/processed/scr/`.
+3. Rebuilds all three IDC components (C, I, Q) and the aggregate index from scratch, and the **IDC for the low-income population** (income up to 2 minimum wages, including no income) when the SCR.data supports it.
+4. Saves processed CSVs and a consolidated Excel workbook to `data/processed/`.
+5. Regenerates the six PNG figures in `outputs/figures/` (with the low-income lines when available).
+6. Updates the auto-managed tables and the latest-release narrative in `README.md`.
+7. **Generates the monthly update report** as matching `.tex`, `.pdf`, and editable `.docx` files in `outputs/report/update-YYYYMM/` (see [Report generation](#5-generate-the-monthly-report)). The report presents the two indices, general and low-income.
+8. **Generates the statistical appendix** (`idc-apendice-YYYYMM.pdf`), a separate PDF, when the SCR.data supports it.
+9. Runs PDF and DOCX content/style/layout reviews (and a PDF review of the appendix) and fixes any issues before committing.
+10. Creates a git commit with the updated data, figures, documentation, the final monthly PDF and the appendix PDF. Report sources, build files, DOCX files, copied images, revision audits, and templates stay local and are ignored by Git.
 
 ## Release period
 
@@ -263,6 +265,18 @@ technical audit. If the decision is not material, omit the section entirely; the
 methodological note under `Notas` explains that the published series still incorporates
 every revision.
 
+### 3b. Refresh the SCR.data aggregates
+
+The IDC for the low-income population and the statistical appendix use the BCB's SCR.data (aggregated credit operations; ODbL license). The command downloads only the yearly ZIPs whose `Last-Modified` changed, validates each download (body length, ZIP central directory, CRC of every month) and rewrites `data/processed/scr/`:
+
+```bash
+python3 -m src.scr_data refresh
+```
+
+The first run on a machine downloads every year (about 1.3 GB, roughly ten minutes); later runs download the current year and any year the BCB regenerated. The BCB regenerates the monthly files continuously, so the numbers of a given month can change between editions; `data/processed/scr/scr_vintage.csv` records when each file was generated. `--full` downloads everything again and `--years 2025 2026` restricts the check.
+
+**If the refresh fails** (network, BCB server error, a truncated ZIP that stays invalid after retries), do not abort the pipeline: report the failure and go on. `main.py` marks the low-income IDC as unavailable when the aggregates do not cover the reference month, and the general IDC does not depend on the SCR.data. Retry the refresh on the next scheduled run of the same cycle; if the aggregates were already stored and only the HEAD check failed, the stored aggregates are kept.
+
 ### 4. Rebuild the index and all outputs
 
 ```bash
@@ -280,10 +294,19 @@ Expected console output ends with a summary like:
 
 Verify that "último dado" matches the expected reference month (typically two months before the release month).
 
+Between the index summary and the file list, `main.py` also prints the status of the **IDC for the low-income population** (`Status: ok ...`, or `Status: sem_cobertura|bloqueio|sem_dados` with the reason). It writes `data/processed/low_income_idc.csv` and `data/processed/low_income_status.json` and draws the low-income lines in four of the six figures. When the status is not `ok`, the report is written with a single sentence saying that the index was not updated in the edition (step 5b2); in particular:
+
+- `sem_cobertura`: the SCR.data does not yet cover the reference month (the file of that month is normally available about 38 days after it ends). Retry `python3 -m src.scr_data refresh` and `python3 main.py` on the next scheduled run of the cycle.
+- `bloqueio`: the SCR.data national I or Q differs from the official series by more than 0.75 p.p. (level or 12-month change). Do not publish the low-income index until the cause is understood; the numbers are in `low_income_status.json`.
+- `sem_dados`: no usable aggregates; run step 3b.
+
+The status `ok` can carry a reconciliation *alert* (difference above 0.25 p.p.); the index is published, and the appendix documents the alert.
+
 #### 4a. Review the README narrative
 
 `python3 main.py` updates the two managed README tables, but the agent must also review and update the surrounding narrative by hand. Before generating the report, inspect `README.md` and ensure that:
 
+- The managed block between `<!-- IDC_LOW_INCOME_START -->` and `<!-- IDC_LOW_INCOME_END -->` shows the latest low-income values (or why they were not updated); the sentence above it, which describes the index, must stay accurate.
 - The latest-release heading is succinct and names both the BCB publication month and the IDC reference month, e.g. `## Atualização maio/2026 — competência mar/2026`.
 - The paragraph immediately below it names the current BCB release month and the latest calculable IDC month.
 - The explanatory paragraph below `<!-- IDC_LATEST_END -->` describes the current IDC value and comparison with the previous month; it must not keep stale text from the prior release.
@@ -364,6 +387,29 @@ The agent reads `$REPORT_DIR/idc-update-${PERIOD}.tex` and substitutes every `\p
 - Keep `index.png` approximately square so Figure 1 uses the annex page vertically instead of recreating a large blank gap below a wide chart. The report regression test requires at least 130 mm of rendered height at the fixed 150 mm width.
 - The main text must explicitly refer to every figure by number or `\ref{...}` and describe what it shows.
 
+#### 5b2. Add the IDC for the low-income population to the report
+
+After the template is filled (no `\placeholder{...}` left) and before compiling, run:
+
+```bash
+python3 -m src.insert_low_income "$PERIOD"
+```
+
+The command reads `data/processed/low_income_idc.csv` and `low_income_status.json` and writes into `$REPORT_DIR/idc-update-${PERIOD}.tex`, anchoring on the section structure that `src.build_report_docx` already requires (it does not touch the template):
+
+| Where | What is added |
+|---|---|
+| `Resumo`, after the last paragraph | One paragraph with the low-income IDC, its position in the history and its I and Q |
+| `Resultados`, first table | The results table with the two indices side by side (bruto and normalizado of each), with a two-level header; its source line also cites the SCR.data |
+| `Resultados`, after the closing paragraph (before the optional revisions section) | Two paragraphs on the low-income group: change of the index and of its I and Q, and the relation to the general IDC |
+| `Trajetória do índice`, last paragraph | One paragraph that points the reader to the low-income lines of the two figures |
+| `Notas`, before the fixed revision-policy note | The note `Sobre o IDC para baixa renda` (method, windows, SCR.data) |
+| `Anexo de figuras` | Captions and sources of the two figures mention the low-income series |
+
+Every inserted block sits between `% >>> IDC baixa renda (...)` and `% <<< IDC baixa renda (...)` comment lines; running the command again regenerates them (it is idempotent). When the status is not `ok`, the command adds a single sentence to `Resultados` saying that the index was not updated in the edition and changes nothing else; if a previous run already replaced the table, start again from the template.
+
+The command validates what it inserted: bold only around numbers, percentages, deltas and abbreviated month-years, and **no mention of the statistical appendix**. The monthly report must stand on its own: never refer to the appendix in the report text, notes, captions or sources. The agent reviews the inserted text against the format rules above (style and wording) but must not change its numbers by hand; if a number is wrong, fix the data and run the commands again. `python3 -m src.insert_low_income "$PERIOD" --check` validates the current file without writing.
+
 #### 5c. Compile the PDF (if lualatex is available)
 
 ```bash
@@ -418,6 +464,7 @@ The reviewing agent must read the `.tex`, inspect the LaTeX log, render every PD
 - No figure has been reduced below full text width to conceal a pagination problem; an over-tall figure is corrected at its source instead.
 - The LaTeX log contains no `! LaTeX Error`.
 - Any `Overfull \hbox` warning in the report body or tables has been inspected by Codex and fixed when it affects the rendered layout.
+- The results table shows the general and the low-income IDC side by side with a two-level header, in the PDF and in the DOCX (merged group headers, no clipped column), and the text never mentions the statistical appendix.
 - The DOCX contains the same title, subtitle, authors, dates, section text, numerical values, table rows, bullets, captions, sources, notes, and citation as the filled `.tex` and PDF.
 - The DOCX is genuinely editable: body text remains Word paragraphs, the results remain a Word table, and charts remain embedded images rather than full-page screenshots.
 - The DOCX uses A4 pages and lets the report body flow across as many pages as necessary without reducing the prescribed font sizes. `Anexo de figuras` always starts on a new page, even if it could fit after `Notas`; explicit page breaks keep one full-width figure on each annex page. Figure paragraphs, captions, and source notes use Word keep-with-next/keep-together controls.
@@ -425,6 +472,22 @@ The reviewing agent must read the `.tex`, inspect the LaTeX log, render every PD
 - The final `.docx` is non-empty, opens successfully, and contains no red template placeholders.
 
 If the review changes the `.tex`, compile twice again, regenerate the DOCX, and repeat both reviews. Do not commit, push, or open a PR until the PDF and DOCX review passes are clean.
+
+#### 5f. Build and review the statistical appendix
+
+The statistical appendix is a separate PDF, written for readers who want the statistics behind the report (decompositions, income classes, quality tests, methodology). It is built from the data, with its text generated from the numbers, after the report is final (it reuses the report's preamble, cover data, `logo.png`, `index.png` and `components_raw.png`):
+
+```bash
+python3 -m src.build_appendix "$PERIOD"
+```
+
+It writes `idc-apendice-${PERIOD}.tex` and `.pdf` into `$REPORT_DIR` (and four extra figures `apendice_*.png`). The command calls the SGS API (modalities, 2-decimal series) and refuses to mix vintages: if the API values differ from the workbook of the release by more than the workbook's rounding it stops with a message (the API was revised after the release; run the appendix in the cycle of the period). Exit codes:
+
+- `0`: built. Review it as below.
+- `3`: not built in this edition because the SCR.data or the SGS series cannot support it (the message says why). The edition goes out without an appendix; do not mention this in the report.
+- `1`: error. Fix it (missing report or figures, vintage mismatch, LaTeX error) and run again.
+
+Review the appendix like the report (render every PDF page and inspect it at 100%): tables fit the text width and keep their source note inside the same float; every `\ref` resolves (the command reports undefined references and `Overfull \hbox` warnings); the numbers in the text agree with the tables; the cover names the same publication and reference months as the report; no template wording or `nan` appears. Do not edit the generated text by hand: it is regenerated from the data. If the wording itself needs a change, change `src/appendix_text.py` (and its tests), not the `.tex`. No DOCX is produced for the appendix.
 
 ---
 
@@ -443,17 +506,22 @@ git add README.md \
         outputs/figures/components_raw_i.png \
         outputs/figures/components_raw_q.png \
         outputs/figures/components_normalized.png \
-        outputs/figures/index.png
+        outputs/figures/index.png \
+        data/processed/low_income_idc.csv \
+        data/processed/low_income_status.json \
+        data/processed/sgs_snapshot.csv \
+        data/processed/scr/
 
 # Only the two official BCB inputs are force-added from the ignored raw folder.
 git add -f data/raw/"$PERIOD"/"${PERIOD}_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx" \
            data/raw/"$PERIOD"/"${PERIOD}_Texto_de_estatisticas_monetarias_e_de_credito.pdf"
 
-# The final monthly PDF is explicitly allowed by .gitignore.
+# The final monthly PDF and the appendix PDF are explicitly allowed by .gitignore.
 git add "outputs/report/update-${PERIOD}/idc-update-${PERIOD}.pdf"
+[ -f "outputs/report/update-${PERIOD}/idc-apendice-${PERIOD}.pdf" ] && git add "outputs/report/update-${PERIOD}/idc-apendice-${PERIOD}.pdf"
 ```
 
-Never force-add a report directory or its auxiliaries. Inspect `git diff --cached --name-only -- outputs/report/` before committing: report additions and modifications must be final monthly PDFs only. Keep the `.tex`, `.docx`, LaTeX build files, `logo.png`, `index.png`, `components_raw.png`, revision audits, and all templates local.
+Never force-add a report directory or its auxiliaries. Inspect `git diff --cached --name-only -- outputs/report/` before committing: report additions and modifications must be the final monthly PDF and the appendix PDF only. Keep the `.tex`, `.docx`, LaTeX build files, `logo.png`, `index.png`, `components_raw.png`, revision audits, and all templates local.
 
 Also stage `main.py` only if `git diff main.py` shows changes.
 
@@ -482,9 +550,13 @@ After `python3 main.py` completes, verify:
 - [ ] "último dado" in the console summary is the expected reference month.
 - [ ] `data/processed/index.csv` — last row date matches the reference month.
 - [ ] `outputs/figures/index.png` — file modification timestamp is today.
+- [ ] `data/processed/low_income_status.json` — `status` is `ok` and `mes_referencia` equals the IDC reference month (or the reason for another status is understood and reported); `data/processed/low_income_idc.csv` ends in the same month.
+- [ ] `README.md` — the managed block between `<!-- IDC_LOW_INCOME_START/END -->` shows the new date and values (or the reason why the index was not updated).
 - [ ] `README.md` — the two auto-managed tables (between `<!-- IDC_LATEST_START/END -->` and `<!-- IDC_STATS_START/END -->`) show the new date and values.
 - [ ] `README.md` — the latest-release narrative around the managed tables has been manually reviewed and updated for the new release/reference month.
 - [ ] `python3 -m src.compare_releases PERIOD` — revision audit completed against the immediately preceding BCB workbook; newly added observations were not misclassified as revisions.
+- [ ] `python3 -m src.insert_low_income PERIOD --check` passes; the results table of the report shows the general and the low-income IDC; the report never mentions the statistical appendix.
+- [ ] `outputs/report/update-PERIOD/idc-apendice-PERIOD.pdf` — built and reviewed page by page (or `python3 -m src.build_appendix PERIOD` exited with code 3 and the reason is reported).
 - [ ] The technical audit retains every revision at full precision, and the public-materiality decision is recorded separately. A routine section exists only when `|revision| >= 0.010` **and** the report's interpretation is affected, unless an explicit qualitative override applies. The table contains only material or indispensable comparison-base rows at three decimal places.
 - [ ] The fixed note beginning `Revisões dos dados. Os valores históricos do IDC...` is present under `Notas`, whether or not the optional public section exists.
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.tex` — no `\placeholder{...}` commands remain.
@@ -493,7 +565,7 @@ After `python3 main.py` completes, verify:
 - [ ] Codex style review of the filled `.tex` passes: bold is restricted to numbers, percentages, deltas, and abbreviated month-year values.
 - [ ] Codex layout review of the final PDF passes: figures are referenced coherently from the text, captions and source notes are together, no source note is duplicated, and no visually relevant LaTeX overfull warning remains.
 - [ ] Codex content/layout review of the rendered DOCX passes: content matches the `.tex`/PDF, all pages were inspected, charts are uncropped, the table remains editable, and no layout defect or template placeholder remains.
-- [ ] Only final monthly PDFs under `outputs/report/` are staged for publication; templates and report auxiliaries remain local and ignored.
+- [ ] Only the final monthly PDF and the appendix PDF under `outputs/report/` are staged for publication; templates and report auxiliaries remain local and ignored.
 
 Tests that require local report sources or assets explicitly skip when those files are absent, as in a fresh GitHub clone. On the report-generation host, keep those local files available so the complete report checks run.
 
@@ -510,10 +582,17 @@ IDC/
 │   ├── load_data.py                 # find_latest_bcb_table() auto-detects newest raw dir
 │   ├── build_index.py               # C, I, Q components + expanding min-max normalisation
 │   ├── normalize.py                 # Expanding min-max (no lookahead)
-│   └── plot.py                      # Generates 6 PNGs
+│   ├── plot.py, plot_overlay.py     # Generates 6 PNGs (+ low-income lines when available)
+│   ├── scr_data.py                  # SCR.data download/validation/aggregation (python3 -m src.scr_data refresh)
+│   ├── low_income.py                # Low-income IDC: series, quality gate, report blocks
+│   ├── insert_low_income.py         # Adds the low-income IDC to the filled report .tex (step 5b2)
+│   ├── build_appendix.py            # Statistical appendix PDF (step 5f); appendix_*.py, exhibits.py, extras.py,
+│   │                                #   lenses.py, anatomy.py, income_idc.py, ref_check.py, sgs_api.py, plot_extras.py,
+│   │                                #   pt_format.py, workbook_tables.py are its building blocks
 ├── data/
 │   ├── raw/YYYYMM/                  # One dir per BCB release, auto-detected by load_data.py
-│   └── processed/                   # Generated: *.csv, idc_data.xlsx
+│   ├── external/                    # Static inputs (CRI by income class, REF Apr/2025)
+│   └── processed/                   # Generated: *.csv, idc_data.xlsx, low_income_*.{csv,json}, sgs_snapshot.csv, scr/
 ├── outputs/figures/                 # Generated: 6 PNGs
 └── outputs/report/
     ├── template-latex/              # Local only: LaTeX template and logo
@@ -526,6 +605,9 @@ IDC/
         ├── idc-update-YYYYMM.tex    # Local filled LaTeX source
         ├── idc-update-YYYYMM.pdf    # Reviewed final PDF (committed)
         ├── idc-update-YYYYMM.docx   # Local editable Word report
+        ├── idc-apendice-YYYYMM.tex  # Local LaTeX source of the statistical appendix (generated)
+        ├── idc-apendice-YYYYMM.pdf  # Reviewed appendix PDF (committed)
+        ├── apendice_*.png          # Local figures of the appendix
         ├── logo.png                # Local copy of the logo
         ├── index.png               # Local copy of the main IDC chart
         ├── components_raw.png      # Local copy of the components chart
@@ -543,6 +625,11 @@ IDC/
 | Working tree is dirty before the preflight | Another task or the user has uncommitted changes | Stop and report `git status --short`; do not switch branches or modify files |
 | Fetch fails or local `main` cannot fast-forward to `origin/main` | Network/authentication failure or divergent local history | Stop and report the exact failure; never continue from stale state or reset/rebase automatically |
 | HTTP 404 on download | Scheduled BCB release not yet published | Stop without modifying files and retry the same period on the next scheduled run |
+| `python3 -m src.scr_data refresh` fails | Network failure, BCB server error, or a ZIP that stays truncated after retries | Report it and continue; the low-income IDC is then unavailable if the aggregates do not cover the reference month. Retry on the next scheduled run of the cycle |
+| `low_income_status.json` has `bloqueio` | SCR.data national I or Q differs from the official series by more than 0.75 p.p. | Do not publish the low-income index; inspect `conciliacao` in the JSON, run the refresh again, and report the numbers |
+| `insert_low_income` says `âncora não encontrada` | The filled report lost a section or text that the converter also needs | Restore the template structure (sections, results table, revision-policy note, annex figures) and run again |
+| `build_appendix` says the SGS series are not from the same vintage as the workbook | The SGS API was revised after the release being processed | Build the appendix in the cycle of the release; `--ignore-vintage` exists only for tests |
+| `build_appendix` exits with code 3 | SCR.data or SGS series cannot support the appendix in this edition | Publish the report without an appendix and say nothing about it in the report |
 | DNS or socket failure reaching BCB | Local runner has no outbound access | If `gh auth status` succeeds, run `python3 -m src.download_bcb_via_github PERIOD`; otherwise report the infrastructure blocker |
 | `ModuleNotFoundError: No module named 'pandas'` | `.venv` missing or not activated | Run `uv venv && uv pip install -r requirements.txt` |
 | `ModuleNotFoundError: No module named 'docx'` | Updated requirements were not installed | Run `uv pip install -r requirements.txt` in the active environment |
