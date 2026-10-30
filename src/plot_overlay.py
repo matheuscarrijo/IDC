@@ -7,8 +7,11 @@ for the group of borrowers with income of up to 2 minimum wages, indexed by mont
 """
 from __future__ import annotations
 
+import matplotlib.dates as mdates
+import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+from matplotlib.text import Text
 
 from src.income_idc import primeira_exibicao
 
@@ -34,11 +37,33 @@ def index(fig, low: pd.DataFrame, start: pd.Timestamp | None = None) -> None:
     ax.legend(loc="upper left")
 
 
+def _keep_event_labels(ax, old_ylim: tuple[float, float]) -> None:
+    """Keep the event labels placed in y data units at the same pixel distance below the total series.
+
+    ``plot.py`` chooses their height for the range of the total series; a wider range squeezes the total series
+    against them and the value labels of its end would cover the text.
+    """
+    low, high = ax.get_ylim()
+    scale = (high - low) / (old_ylim[1] - old_ylim[0])
+    if abs(scale - 1) < 1e-9:
+        return
+    total = ax.get_lines()[0]
+    xs = mdates.date2num(np.asarray(total.get_xdata(), dtype="datetime64[ns]"))
+    ys = np.asarray(total.get_ydata(), dtype=float)
+    for text in ax.texts:
+        if type(text) is not Text or text.get_transform() is not ax.transData:  # value labels are Annotations
+            continue
+        x, y_old = text.convert_xunits(text.get_position()[0]), text.get_position()[1]
+        y_ref = float(np.interp(x, xs, ys))
+        text.set_y(max(y_ref - (y_ref - y_old) * scale, low + 0.10 * (high - low)))
+
+
 def _dashed(ax, series: pd.Series, color: str = COLOR, label: str | None = None, end_decimals: int = 1, end_right: bool = False, end_dy: float = 0) -> Line2D:
     (line,) = ax.plot(series.index, series.values, color=color, linewidth=1.7, linestyle="--", zorder=3, label=label)
     low_y, high_y = ax.get_ylim()
     spread = series.max() - series.min()
     ax.set_ylim(min(low_y, series.min() - 0.05 * spread), max(high_y, series.max() + 0.24 * spread))
+    _keep_event_labels(ax, (low_y, high_y))
     ax.plot(series.index[-1], series.iloc[-1], "o", color=color, markersize=4, zorder=6)
     if end_right:
         _label(ax, series.index[-1], series.iloc[-1], f"{series.iloc[-1]:.{end_decimals}f}", dx=8, dy=end_dy, color=color)
