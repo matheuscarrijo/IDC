@@ -104,7 +104,7 @@ O índice é composto por **três dimensões**, cada uma com dados disponíveis 
 - Conceito: Percentual da carteira de crédito livre do Sistema Financeiro Nacional com pelo menos uma parcela com atraso superior a 90 dias. Não inclui operações referenciadas em taxas regulamentadas, operações vinculadas a recursos do BNDES ou quaisquer outras lastreadas em recursos compulsórios ou governamentais.
 - Para mais informações sobre a série: [https://dadosabertos.bcb.gov.br/dataset/21112-inadimplencia-da-carteira-de-credito-com-recursos-livres---pessoas-fisicas---total](https://dadosabertos.bcb.gov.br/dataset/21112-inadimplencia-da-carteira-de-credito-com-recursos-livres---pessoas-fisicas---total)
 
-### 2.3. Qualidade do crédito (composição do crédito "caro")
+### 2.3. Participação do crédito oneroso (composição do crédito "caro")
 
 Mede a fração do crédito livre de pessoa física alocada em modalidades consideradas mais onerosas.
 
@@ -149,7 +149,7 @@ onde:
 
 - $C_t$: comprometimento de renda (normalizado)
 - $I_t$: inadimplência (normalizada)
-- $Q_t$: qualidade do crédito (normalizada)
+- $Q_t$: participação do crédito oneroso (normalizada)
 
 ### 3.3. IDC para a população de baixa renda
 
