@@ -15,6 +15,13 @@ from synthetic import T1, componentes, faixa_bruta, indice_geral
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "filled_report.tex"
 
 
+def report_text(mesref: str = "dez-2016") -> str:
+    """The filled report of the fixture, set to the month of the synthetic data (``T1``)."""
+    base = FIXTURE.read_text(encoding="utf-8")
+    assert r"\newcommand{\mesref}{jul-2026}" in base
+    return base.replace(r"\newcommand{\mesref}{jul-2026}", rf"\newcommand{{\mesref}}{{{mesref}}}")
+
+
 def facts_and_result():
     comp = componentes()
     idx = indice_geral(comp)
@@ -27,7 +34,7 @@ def facts_and_result():
 class InsertionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.base = FIXTURE.read_text(encoding="utf-8")
+        cls.base = report_text()
         cls.resultado, cls.facts = facts_and_result()
         cls.tex = ins.insert(cls.base, cls.resultado, cls.facts)
 
@@ -83,6 +90,28 @@ class InsertionTests(unittest.TestCase):
         self.assertEqual(removed, self.base)  # only the commented block was added
         self.assertIn("não foi atualizado nesta edição", sem)
         self.assertEqual(self.base.count(r"\begin{table}"), sem.count(r"\begin{table}"))
+
+    def test_the_month_of_the_report_is_read_from_its_macro(self):
+        self.assertEqual(ins.report_month(self.base), "dez-2016")
+        self.assertEqual(ins.report_month(report_text(r"\placeholder{mmm-AAAA}")), r"\placeholder{mmm-AAAA}")
+        self.assertIsNone(ins.report_month(self.base.replace(r"\newcommand{\mesref}", r"\newcommand{\outro}")))
+
+    def test_data_of_another_month_never_enter_the_report(self):
+        older = report_text("jul-2026")  # a report of an older release, with the processed data of a newer one
+        with self.assertRaisesRegex(ValueError, "jul-2026.*dez-2016"):
+            ins.insert(older, self.resultado, self.facts)
+        with self.assertRaisesRegex(ValueError, "jul-2026.*dez-2016"):  # also the one-sentence edition
+            ins.insert(older, LI.Resultado("sem_cobertura", "x", t1=T1), None)
+
+    def test_an_unfilled_report_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "preenchido"):
+            ins.insert(report_text(r"\placeholder{mmm-AAAA}"), self.resultado, self.facts)
+        with self.assertRaisesRegex(ValueError, "preenchido"):
+            ins.insert(self.base.replace(r"\newcommand{\mesref}", r"\newcommand{\outro}"), self.resultado, self.facts)
+
+    def test_the_month_is_not_compared_when_the_data_have_none(self):
+        sem = ins.insert(self.base, LI.Resultado("sem_dados", "x"), None)
+        self.assertIn("não foi atualizado nesta edição", sem)
 
     def test_a_report_without_the_expected_structure_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "âncora não encontrada"):

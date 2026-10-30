@@ -13,6 +13,8 @@ requires, so it works on any filled report without changing the template:
 
 When the SCR.data could not be used in the edition (status other than ``ok``), a single sentence says so and
 nothing else changes.  The text never refers to any other document: the report is self-contained.
+The report and the processed data must refer to the same month (``\\mesref`` against the last month of the
+data); otherwise nothing is written, so that numbers of another release never enter a filled report.
 
 Every inserted block sits between ``% >>> IDC baixa renda (...)`` and ``% <<< IDC baixa renda (...)`` comment
 lines, so running the step again regenerates the blocks instead of duplicating them.  The agent reviews the
@@ -139,8 +141,24 @@ def _update_figures(tex: str) -> str:
     return re.sub(r"\\begin\{figure\}.*?\\end\{figure\}", figure, tex, flags=re.S)
 
 
+def report_month(tex: str) -> str | None:
+    """Reference month written in the report (``\\mesref``), or ``None`` when the macro is missing."""
+    found = re.search(r"^\\newcommand\{\\mesref\}\{(.*?)\}[ \t]*(?:%.*)?$", tex, re.M)
+    return found.group(1) if found else None
+
+
+def _check_month(tex: str, resultado: LI.Resultado) -> None:
+    mesref = report_month(tex)
+    if mesref is None or "placeholder" in mesref:
+        raise ValueError("o relatório precisa estar preenchido antes da inserção (\\mesref ausente ou ainda com placeholder)")
+    if resultado.t1 is not None and mesref != mes(resultado.t1):
+        raise ValueError(f"o relatório trata de {mesref}, mas os dados do IDC para baixa renda terminam em {mes(resultado.t1)}; "
+                         "rode python3 main.py com o release do relatório")
+
+
 def insert(tex: str, resultado: LI.Resultado, facts: LI.FatosBaixaRenda | None) -> str:
     """Return ``tex`` with the low-income blocks for this edition (regenerating blocks of a previous run)."""
+    _check_month(tex, resultado)
     tex, _ = remove_blocks(tex, keep=("tabela",))
     if _find(tex, SECTION_RESULTS) > _find(tex, SECTION_TRAJECTORY):
         raise ValueError("seções do relatório fora da ordem esperada (Resultados antes de Trajetória do índice)")
