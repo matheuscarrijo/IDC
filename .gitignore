@@ -1,10 +1,11 @@
-# Relatórios: somente os PDFs finais mensais são versionados.
+# Relatórios: somente os PDFs finais mensais (nota e apêndice estatístico) são versionados.
 # Fontes LaTeX, arquivos de construção, DOCX, templates, imagens e auditorias
 # permanecem locais, inclusive logo.png, index.png e components_raw.png.
 outputs/report/*
 !outputs/report/update-*/
 outputs/report/update-*/*
 !outputs/report/update-*/idc-update-*.pdf
+!outputs/report/update-*/idc-apendice-*.pdf
 
 # BCB raw data (reproduzível via download_bcb_release.py)
 data/raw/
