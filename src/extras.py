@@ -55,7 +55,7 @@ def construir(t1: pd.Timestamp, sgs: pd.DataFrame, comp: pd.DataFrame, idx: pd.D
     out.tabelas["preco_fluxo"] = tabela_preco_fluxo(ctx)
     out.textos["anatomia"] = texto_anatomia(ctx, a, cq)
     out.textos["preco_fluxo"] = texto_preco_fluxo(ctx)
-    out.dados.update({"anatomia": a, "c_q": cq, "preco_fluxo": preco})
+    out.dados.update({"anatomia": a, "c_q": cq, "preco_fluxo": preco, "taxas_modalidades": taxas.loc[:t1]})
 
     # ---------------------------------------------------------------- Camada 2 (SCR.data)
     if not paineis:
@@ -81,7 +81,7 @@ def construir(t1: pd.Timestamp, sgs: pd.DataFrame, comp: pd.DataFrame, idx: pd.D
             return ""
         meses = [mes(m) for m in sorted({r.data_base for r in q.itertuples()})]
         lista = meses[0] if len(meses) == 1 else ", ".join(meses[:-1]) + " e " + meses[-1]
-        return f"Atenção: houve reclassificação de pesos superior a 1 p.p. em {lista}, o que afeta a comparação de 12 meses."
+        return f"Atenção: houve mudança de peso superior a 1 p.p. em {lista}, o que afeta a comparação de 12 meses."
 
     memo = memo_sem_rendimento(ctx, scr_brutos["faixa"]) if scr_brutos else None
     out.tabelas["faixa"], comb_faixa, d_faixa = tabela_lente(

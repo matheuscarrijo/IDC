@@ -72,13 +72,14 @@ def _dashed(ax, series: pd.Series, color: str = COLOR, label: str | None = None,
     return line
 
 
-def components_raw(fig, low: pd.DataFrame) -> None:
+def components_raw(fig, low: pd.DataFrame, *, legend: bool = True) -> None:
     """``components_raw.png``: dashed low-income lines in the I and Q panels."""
     _dashed(fig.axes[1], low["I"].dropna(), end_right=True)
     _dashed(fig.axes[2], low["Q"].dropna(), end_right=True, end_dy=7)  # clear of the end labels of the total
     # in the gap between the figure title and the first panel, so that the figure keeps its height
-    fig.legend(handles=[Line2D([0], [0], color=COLOR, linewidth=1.7, linestyle="--")], labels=[FOOTNOTE],
-               loc="upper center", bbox_to_anchor=(0.5, 0.972), fontsize=9, frameon=False)
+    if legend:
+        fig.legend(handles=[Line2D([0], [0], color=COLOR, linewidth=1.7, linestyle="--")], labels=[FOOTNOTE],
+                   loc="upper center", bbox_to_anchor=(0.5, 0.972), fontsize=9, frameon=False)
 
 
 def component_single(fig, comp: str, low: pd.DataFrame) -> None:

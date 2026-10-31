@@ -15,7 +15,7 @@ import pandas as pd
 
 from src import low_income as LI
 from src import lenses as L
-from src.anatomy import Q_MODALIDADES
+from src.anatomy import PRODUTOS, Q_MODALIDADES
 from src.exhibits import memo_sem_rendimento
 from src.extras import Exibicoes, construir
 from src.pt_format import mes, num, tabela_latex
@@ -152,6 +152,96 @@ def _cenarios(low: pd.DataFrame, ger_i: pd.Series, ger_q: pd.Series, c_norm: pd.
 
 
 # =============================================================================== tables
+def tab_comprometimento(d: DadosApendice) -> str:
+    """Separate C from Q while retaining the existing levels and changes."""
+    cq = d.ext.dados["c_q"]
+    cm, ca = cq["cm"], cq["ca"]
+    rotulos = {
+        "C — serviço da dívida (SGS 29034)": "C --- serviço da dívida (SGS~29034)",
+        "dos quais juros (SGS 29033)": r"\quad dos quais juros (SGS~29033)",
+        "dos quais amortização (SGS 29036)": r"\quad dos quais amortização (SGS~29036)",
+        "C sem financiamento imobiliário (SGS 29035)": "C sem financiamento imobiliário (SGS~29035)",
+        "Endividamento (dívida/renda de 12 meses, SGS 29037)": "Endividamento: dívida/renda de 12 meses (SGS~29037)",
+    }
+    linhas = [[rotulo, num(cm.loc[chave, "t1"], 2), num(cm.loc[chave, "delta"], 2, True),
+               num(ca.loc[chave, "delta"], 2, True)] for chave, rotulo in rotulos.items()]
+    return tabela_latex(
+        f"Comprometimento de renda (C) --- nível em {mes(d.t1)} e variações (p.p.).", "tab:comprometimento",
+        ["Indicador", mes(d.t1), "Δ mês", "Δ 12 meses"], linhas,
+        r">{\raggedright\arraybackslash}p{7.2cm}rrr", FONTE_SGS)
+
+
+TAXAS_POR_MODALIDADE = {
+    "consig_servidores": "Crédito pessoal - Consignado - Servidores públicos",
+    "consig_inss": "Crédito pessoal - Consignado - Beneficiários do INSS",
+    "consig_privado": "Crédito pessoal - Consignado - Trabalhadores setor privado",
+    "nao_consignado": "Crédito pessoal - Não consignado - Total",
+    "cartao_rotativo": "Cartão de crédito - Rotativo",
+    "cartao_parcelado": "Cartão de crédito - Parcelado",
+    "veiculos": "Aquisição de veículos",
+    "composicao_dividas": "Composição de dívidas",
+    "cheque_especial": "Cheque especial",
+    "outros_bens": "Aquisição de outros bens",
+    "desconto_cheques": "Desconto de cheques",
+    "arrend_outros_bens": "Arrendamento mercantil - Outros bens",
+    "arrend_veiculos": "Arrendamento mercantil - Veículos",
+}
+
+
+def composicao_q(d: DadosApendice) -> pd.DataFrame:
+    """SGS balances, shares and available matching interest rates, without rounding."""
+    sg = d.sgs
+    taxas = d.ext.dados["taxas_modalidades"]
+    datas = (d.tprev, d.t0, d.t1)
+    total = sg.loc[list(datas), "saldo_total"]
+    if total.isna().any() or (total <= 0).any():
+        raise ValueError("saldo total do crédito livre PF ausente ou inválido na composição de Q")
+    linhas = []
+    for chave, (nome, *_) in PRODUTOS.items():
+        saldo = sg.loc[list(datas), f"saldo_{chave}"]
+        if saldo.isna().any():
+            raise ValueError(f"saldo ausente para {nome} na composição de Q")
+        peso = 100 * saldo / total
+        coluna = TAXAS_POR_MODALIDADE.get(chave)
+        taxa = taxas.at[d.t1, coluna] if coluna in taxas.columns and d.t1 in taxas.index else float("nan")
+        taxa0 = taxas.at[d.t0, coluna] if coluna in taxas.columns and d.t0 in taxas.index else float("nan")
+        linhas.append({"chave": chave, "modalidade": nome, "em_q": chave in Q_MODALIDADES,
+                       "saldo_bi": saldo.loc[d.t1] / 1000, "peso": peso.loc[d.t1],
+                       "delta_mes": peso.loc[d.t1] - peso.loc[d.tprev],
+                       "delta_ano": peso.loc[d.t1] - peso.loc[d.t0],
+                       "taxa": taxa, "delta_taxa": taxa - taxa0})
+    return pd.DataFrame(linhas).set_index("chave")
+
+
+def tab_composicao_q(d: DadosApendice) -> str:
+    """Group all SGS modalities by whether they enter Q, using stock weights."""
+    dados = composicao_q(d)
+    linhas = []
+    separadores = []
+    for em_q, titulo in ((True, "Modalidades incluídas em Q"), (False, "Modalidades não incluídas em Q")):
+        grupo = dados.loc[dados["em_q"] == em_q]
+        linhas.append([r"\textit{" + titulo + "}", "", "", "", "", "", ""])
+        for _, r in grupo.iterrows():
+            linhas.append([r["modalidade"], num(r["saldo_bi"], 1), num(r["peso"], 2),
+                           num(r["delta_mes"], 2, True), num(r["delta_ano"], 2, True),
+                           num(r["taxa"], 1), num(r["delta_taxa"], 1, True)])
+        linhas.append([r"\textit{" + ("Total de Q" if em_q else "Total fora de Q") + "}",
+                       num(grupo["saldo_bi"].sum(), 1), num(grupo["peso"].sum(), 2),
+                       num(grupo["delta_mes"].sum(), 2, True), num(grupo["delta_ano"].sum(), 2, True), "---", "---"])
+        separadores.append(len(linhas) - 1)
+    linhas.append([r"\textit{Total do crédito livre PF}", num(d.sgs.at[d.t1, "saldo_total"] / 1000, 1),
+                   "100,00", "0,00", "0,00", "---", "---"])
+    return tabela_latex(
+        f"Composição do crédito oneroso (Q) e demais modalidades do crédito livre PF --- {mes(d.t1)}.",
+        "tab:composicao_q", ["Modalidade", r"Saldo (R\$ bi)", r"Peso (\%)", "Δ mês", "Δ 12 m", r"Juros (\% a.a.)", "Δ juros"],
+        linhas, r">{\raggedright\arraybackslash}p{4.1cm}rrrrrr",
+        "Banco Central do Brasil (SGS e Estatísticas Monetárias e de Crédito, Tabela 16), elaboração própria. "
+        "O peso é a participação do saldo de cada modalidade no saldo do crédito livre PF; suas variações e a variação dos juros "
+        "em 12 meses são dadas em pontos percentuais. As taxas de juros referem-se às novas operações e não entram no cálculo de Q. "
+        "Traço indica taxa indisponível ou sem correspondência exata com a modalidade de saldo.",
+        tamanho=r"\footnotesize", separadores=tuple(separadores), tabcolsep="2pt", posicao="H")
+
+
 def tab_evolucao(d: DadosApendice) -> str:
     sg = d.sgs
     t0, tp, t1 = d.t0, d.tprev, d.t1
@@ -232,7 +322,7 @@ def tab_quebras(d: DadosApendice) -> str:
     sem = [nome for lente, nome in nomes.items() if lente not in set(q["lente"])]
     nota_sem = f" Sem variação de peso acima de 2 p.p. em: {', '.join(sem)}." if sem else ""
     return tabela_latex(
-        "Reclassificações de peso superiores a 2 p.p. em um único mês (" + mes(primeira_exibicao()) + " a " + mes(d.t1) + ").", "tab:quebras",
+        "Mudanças de peso superiores a 2 p.p. em um único mês (" + mes(primeira_exibicao()) + " a " + mes(d.t1) + ").", "tab:quebras",
         ["Lente", "Mês", "Unidades e variação do peso (p.p.)"], linhas, r"llp{9.8cm}",
         "Banco Central do Brasil (SCR.data), elaboração própria. Variação do peso da unidade no crédito livre PF em relação ao mês anterior." + nota_sem,
         tamanho=r"\small", posicao="H")
@@ -256,7 +346,7 @@ def tab_cenarios(d: DadosApendice) -> str:
     jan_mes = f"janeiros de {d.janeiros.index[0].year} a {d.janeiros.index[-1].year}"
     fora = sorted(d.quebras[(d.quebras["lente"] == "faixa") & (d.quebras["unidade"] == BAIXA_RENDA) & (d.quebras["data_base"].dt.month != 1)]["data_base"])
     rotulos = {"janeiros": f"Sem os saltos de janeiro ({jan_mes})",
-               "fora_jan": "Sem as reclassificações fora de janeiro (" + ", ".join(mes(m) for m in fora) + ")",
+               "fora_jan": "Sem as mudanças de peso fora de janeiro (" + ", ".join(mes(m) for m in fora) + ")",
                "ambos": "Sem ambos"}
     linhas = [["Série observada", num(obs, 3), "---", "---", "---"]]
     for k, rot in rotulos.items():
@@ -271,15 +361,14 @@ def tab_cenarios(d: DadosApendice) -> str:
 
 
 def tab_sensibilidade(d: DadosApendice) -> str:
-    s = d.sens
+    s = d.sens.loc[["Base (janela jul/2012)", "Janela desde jan/2014"]]
     linhas = []
     for nome, r in s.iterrows():
         linhas.append([nome, *(num(r[f], 3) for f in L.FAIXAS_INDICE), num(r["máx |dif. vs base| (2015-)"], 3)])
     return tabela_latex(
-        f"Sensibilidade do IDC por faixa de renda a escolhas de construção --- {mes(d.t1)}.", "tab:sensibilidade",
+        f"Sensibilidade do IDC por faixa de renda à data inicial da janela --- {mes(d.t1)}.", "tab:sensibilidade",
         ["Variante", *L.FAIXAS_INDICE, "Dif. máx. 2015-"], linhas, r">{\raggedright\arraybackslash}p{4.4cm}rrrrr",
         "Banco Central do Brasil (SGS e SCR.data), elaboração própria. Janela desde jan/2014: I e Q das faixas normalizados com início em jan-2014. "
-        "Reescalado: I e Q de cada faixa multiplicados mensalmente pela razão entre o valor oficial (SGS) e o total do SCR.data. "
         "A última coluna é a maior diferença absoluta em relação à base entre mai-2015 e o mês de referência.", tamanho=r"\small", posicao="H")
 
 

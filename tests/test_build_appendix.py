@@ -1,6 +1,8 @@
 import re
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -63,6 +65,43 @@ class ReportDataTests(unittest.TestCase):
             BA.preamble(PREAMBLE.replace(r"\fancyhead[L]{\small\itshape \reporttitle}", ""))
 
 
+class CommandTests(unittest.TestCase):
+    def test_docx_is_generated_in_both_normal_and_no_pdf_modes(self):
+        for no_pdf in (False, True):
+            with self.subTest(no_pdf=no_pdf), tempfile.TemporaryDirectory() as tmp:
+                folder = Path(tmp) / "update-202609"
+                folder.mkdir()
+                (folder / "idc-update-202609.tex").write_text("report", encoding="utf-8")
+                for name in ("logo.png", *BA.SHARED_FIGURES):
+                    (folder / name).touch()
+                with patch.object(BA, "REPORT_DIR", str(Path(tmp) / "update-{period}")), \
+                     patch.object(BA, "load_data", return_value=object()), \
+                     patch.object(BA, "gerar_figuras"), \
+                     patch.object(BA, "document", return_value="appendix"), \
+                     patch.object(BA, "build_docx") as docx, \
+                     patch.object(BA, "compile_pdf", return_value=[]) as pdf:
+                    result = BA.main(["202609", *( ["--no-pdf"] if no_pdf else [])])
+                self.assertEqual(result, 0)
+                docx.assert_called_once_with(folder / "idc-apendice-202609.tex", folder / "idc-apendice-202609.docx", assets_dir=folder)
+                self.assertEqual(pdf.call_count, 0 if no_pdf else 1)
+
+    def test_docx_error_fails_command_before_pdf_compilation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "update-202609"
+            folder.mkdir()
+            (folder / "idc-update-202609.tex").write_text("report", encoding="utf-8")
+            for name in ("logo.png", *BA.SHARED_FIGURES):
+                (folder / name).touch()
+            with patch.object(BA, "REPORT_DIR", str(Path(tmp) / "update-{period}")), \
+                 patch.object(BA, "load_data", return_value=object()), \
+                 patch.object(BA, "gerar_figuras"), \
+                 patch.object(BA, "document", return_value="appendix"), \
+                 patch.object(BA, "build_docx", side_effect=ValueError("invalid")), \
+                 patch.object(BA, "compile_pdf") as pdf:
+                self.assertEqual(BA.main(["202609"]), 1)
+                pdf.assert_not_called()
+
+
 SGS = ROOT / "data/processed/sgs_snapshot.csv"
 HAS_DATA = all(p.exists() for p in (SGS, ROOT / "data/processed/scr/scr_faixa.csv", ROOT / "data/external/cri_faixa_ref202504.csv",
                                     ROOT / "data/raw/202609/202609_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx"))
@@ -80,7 +119,8 @@ class DocumentTests(unittest.TestCase):
         finally:
             os.chdir(cwd)
         text = BA.document(d, FIXTURE.read_text(encoding="utf-8").replace(r"\documentclass[11pt,a4paper]{article}", PREAMBLE + r"\usepackage{hyperref}"))
-        self.assertEqual(len(re.findall(r"\\section\{", text)), 7)
+        self.assertEqual(len(re.findall(r"\\section\{", text)), 8)
+        self.assertIn(r"\section{Figuras}\label{sec:figuras}", text)
         self.assertIn(r"\tableofcontents", text)
         self.assertIn(r"Apêndice Estatístico --- Divulgação \mespublicacao; competência \mesreferencia", text)
         self.assertNotIn("Versão para discussão", text)

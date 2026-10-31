@@ -1,6 +1,7 @@
 import re
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -85,6 +86,48 @@ class CNacionalTests(unittest.TestCase):
 
 
 class TabelasDoApendiceTests(unittest.TestCase):
+    def test_comprometimento_table_keeps_levels_and_changes_without_q(self):
+        keys = ["C — serviço da dívida (SGS 29034)", "dos quais juros (SGS 29033)",
+                "dos quais amortização (SGS 29036)", "C sem financiamento imobiliário (SGS 29035)",
+                "Endividamento (dívida/renda de 12 meses, SGS 29037)"]
+        monthly = pd.DataFrame({"t1": [29.0, 11.0, 18.0, 26.0, 50.0], "delta": [0.16, 0.06, 0.10, 0.14, 0.18]}, index=keys)
+        annual = pd.DataFrame({"delta": [1.44, 0.84, 0.60, 1.26, 1.18]}, index=keys)
+        d = SimpleNamespace(t1=pd.Timestamp("2026-08-01"),
+                            ext=SimpleNamespace(dados={"c_q": {"cm": monthly, "ca": annual}}))
+        tex = AP.tab_comprometimento(d)
+        self.assertIn("tab:comprometimento", tex)
+        self.assertIn("29,00 & +0,16 & +1,44", tex)
+        self.assertIn("dos quais juros", tex)
+        self.assertNotIn("crédito oneroso", tex)
+
+    def test_q_table_uses_balance_weights_for_all_modalities_and_separates_q(self):
+        from src.anatomy import PRODUTOS, Q_MODALIDADES, atribuir_variacao_Q
+
+        dates = pd.to_datetime(["2025-08-01", "2026-07-01", "2026-08-01"])
+        sg = pd.DataFrame(index=dates)
+        for i, key in enumerate(PRODUTOS):
+            sg[f"saldo_{key}"] = [100 + i, 100 + i, 100 + i * 2]
+        sg["saldo_total"] = sg.sum(axis=1)
+        rates = pd.DataFrame({"Cartão de crédito - À vista": [1.0, 2.0, 3.0],
+                              "Cheque especial": [120.0, 130.0, 135.0]}, index=dates)
+        d = SimpleNamespace(sgs=sg, t0=dates[0], tprev=dates[1], t1=dates[2],
+                            ext=SimpleNamespace(dados={"taxas_modalidades": rates}))
+        data = AP.composicao_q(d)
+        self.assertEqual(set(data.index), set(PRODUTOS))
+        self.assertEqual(set(data.index[data["em_q"]]), set(Q_MODALIDADES))
+        self.assertAlmostEqual(data["peso"].sum(), 100.0)
+        self.assertAlmostEqual(data.loc["cheque_especial", "saldo_bi"], sg.loc[d.t1, "saldo_cheque_especial"] / 1000)
+        q = atribuir_variacao_Q(sg, d.tprev, d.t1)
+        self.assertAlmostEqual(data.loc[list(Q_MODALIDADES), "peso"].sum(), q["peso_t1"].sum())
+        self.assertAlmostEqual(data.loc[list(Q_MODALIDADES), "delta_mes"].sum(), q["contribuicao"].sum())
+        self.assertEqual(data.loc["cheque_especial", "delta_taxa"], 15.0)
+        # The stock combines à vista and parcelado lojista, so the rate for à vista alone is not comparable.
+        self.assertTrue(pd.isna(data.loc["cartao_vista", "taxa"]))
+        tex = AP.tab_composicao_q(d)
+        self.assertLess(tex.index("Modalidades incluídas em Q"), tex.index("Modalidades não incluídas em Q"))
+        self.assertEqual(sum(nome in tex for nome, *_ in PRODUTOS.values()), len(PRODUTOS))
+        self.assertNotIn("concessões", tex)
+
     def test_a_table_is_scaled_to_the_text_width_only_when_it_is_wider(self):
         tex = tabela_latex("Titulo.", "tab:x", ["A", "B"], [["1", "2"]], "lr", "origem")
         self.assertIn(r"\begin{adjustbox}{max width=\textwidth}", tex)
@@ -145,6 +188,85 @@ class ApendiceIntegrationTests(unittest.TestCase):
         labels = re.findall(r"\\label\{([^}]+)\}", self.corpo)
         self.assertEqual(len(labels), len(set(labels)), sorted(l for l in labels if labels.count(l) > 1))
         self.assertLessEqual(set(re.findall(r"\\ref\{([^}]+)\}", self.corpo)), set(labels))
+
+    def test_anatomy_keeps_separate_c_and_q_tables(self):
+        figura = self.corpo.index(r"\label{fig:atribuicao}")
+        c = self.corpo.index(r"\label{tab:comprometimento}")
+        q = self.corpo.index(r"\label{tab:composicao_q}")
+        self.assertLess(c, q)
+        self.assertLess(q, figura)
+        self.assertNotIn(r"\label{tab:c_q}", self.corpo)
+        self.assertNotIn(r"\label{tab:preco_fluxo}", self.corpo)
+        valores = AP.composicao_q(self.d)
+        self.assertAlmostEqual(valores.loc[valores["em_q"], "peso"].sum(),
+                               self.d.ext.dados["c_q"]["q"].loc[self.t1])
+
+    def test_all_figures_are_after_the_text_in_their_original_order(self):
+        corpo = self.corpo
+        inicio = corpo.index(r"\section{Figuras}\label{sec:figuras}")
+        self.assertIn(r"\FloatBarrier", corpo[inicio - 20:inicio])
+        labels = ["fig:indice", "fig:componentes", "fig:atribuicao", "fig:lentes", "fig:uf", "fig:idc_faixa"]
+        positions = [corpo.index(r"\label{" + label + "}") for label in labels]
+        self.assertTrue(all(pos > inicio for pos in positions))
+        self.assertEqual(positions, sorted(positions))
+        self.assertTrue(all(r"\ref{" + label + "}" in corpo[:inicio] for label in labels))
+
+    def test_segment_intro_explains_sources_without_a_reconciliation_table(self):
+        intro = self.corpo.split(r"\subsection{Universo e leitura das tabelas}", 1)[1].split(r"\subsection{Faixa de renda}", 1)[0]
+        self.assertIn("As contribuições somam as variações calculadas no SCR.data", intro)
+        self.assertIn("podem diferir das variações dos componentes do IDC geral", intro)
+        self.assertNotIn(r"\label{tab:conc_t1}", self.corpo)
+        self.assertNotIn("status alerta", intro)
+        self.assertIn("conciliacao", self.d.ext.dados)
+        self.assertNotIn(r"\label{tab:conc_hist}", self.corpo)
+
+    def test_reconciliation_is_internal_but_data_quality_section_remains(self):
+        self.assertIn(r"\section{Qualidade dos dados}\label{sec:qualidade}", self.corpo)
+        self.assertNotIn(r"\subsection{Conciliação do SCR.data com o SGS}", self.corpo)
+        self.assertNotIn("Status I & Status Q", self.corpo)
+        self.assertIn(r"\subsection{Mudanças abruptas de peso}", self.corpo)
+        self.assertIn(r"\subsection{Sinalização de mudanças de peso}", self.corpo)
+        self.assertIn("conciliacao", self.d.ext.dados)
+
+    def test_break_interpretation_documents_evidence_without_attributing_causality(self):
+        texto = self.corpo.split(r"\subsection{Mudanças abruptas de peso}", 1)[1].split(r"\subsection{Composição do grupo", 1)[0]
+        self.assertIn("Em jun-2016, o limite para o reporte individualizado ao SCR caiu", texto)
+        self.assertIn("não demonstra quanto do movimento decorreu da nova regra", texto)
+        self.assertIn("Entre jun-2025 e jul-2025", texto)
+        self.assertIn("não permitem identificar se houve", texto)
+        self.assertIn("operações inadimplentes permaneceram, em geral, mais tempo", texto)
+        self.assertIn("não identifica a causa das variações por faixa de renda", texto)
+        pesos = L.taxas(self.d.paineis["faixa"])["peso"].unstack()
+        delta = pesos.loc["2016-06-01", BAIXA_RENDA] - pesos.loc["2016-05-01", BAIXA_RENDA]
+        self.assertIn(TA.pp(delta, 2), texto)
+        saldos = self.d.paineis["faixa"]["carteira"].unstack()
+        variacao = (saldos.loc["2025-07-01", BAIXA_RENDA] - saldos.loc["2025-06-01", BAIXA_RENDA]) / 1e9
+        self.assertIn(TA.num(variacao, 1, True), texto)
+        self.assertIn("Circ_3786_v2_L.pdf", self.corpo)
+        self.assertIn("bcb.gov.br/publicacoes/rpm/202509", self.corpo)
+
+    def test_sources_for_historical_context_follow_reference_date(self):
+        from types import SimpleNamespace
+        early = TA.s7_metodologia(SimpleNamespace(t1=pd.Timestamp("2016-05-01"), f=self.d.f))
+        self.assertNotIn("Circ_3786_v2_L.pdf", early)
+        self.assertNotIn("bcb.gov.br/publicacoes/rpm/202509", early)
+        mid = TA.s7_metodologia(SimpleNamespace(t1=pd.Timestamp("2025-08-01"), f=self.d.f))
+        self.assertIn("Circ_3786_v2_L.pdf", mid)
+        self.assertNotIn("bcb.gov.br/publicacoes/rpm/202509", mid)
+
+    def test_uf_text_omits_weight_threshold_and_matches_figures(self):
+        trecho = self.corpo.split(r"\subsection{Unidade da federação}", 1)[1].split(r"\section{IDC por faixa de renda}", 1)[0]
+        self.assertNotIn("definidas pelo CEP", trecho)
+        self.assertNotIn("2~p.p.", trecho)
+        self.assertIn("resumem, respectivamente, as contribuições por segmento e a inadimplência", trecho)
+
+    def test_sensitivity_report_only_compares_the_window_start(self):
+        texto = self.corpo.split(r"\paragraph{Sensibilidade.}", 1)[1].split(r"\paragraph{Teste do C nacional.}", 1)[0]
+        self.assertIn("data inicial da janela", texto)
+        self.assertIn("Base (janela jul/2012)", texto)
+        self.assertIn("Janela desde jan/2014", texto)
+        self.assertNotIn("reescal", texto.lower())
+        self.assertIn("I e Q reescalados ao SGS", self.d.sens.index)
 
     def test_text_has_no_template_leftovers_and_quotes_the_data(self):
         self.assertIsNone(re.search(r"\bnan\b|\bNone\b|\{\{|\binf\b", self.corpo))

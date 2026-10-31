@@ -15,8 +15,8 @@ This document is written for automated agents executing the IDC monthly update. 
 5. Regenerates the six PNG figures in `outputs/figures/` (with the low-income lines when available).
 6. Updates the auto-managed tables and the latest-release narrative in `README.md`.
 7. **Generates the monthly update report** as matching `.tex`, `.pdf`, and editable `.docx` files in `outputs/report/update-YYYYMM/` (see [Report generation](#5-generate-the-monthly-report)). The report presents the two indices, general and low-income.
-8. **Generates the statistical appendix** (`idc-apendice-YYYYMM.pdf`), a separate PDF, when the SCR.data supports it.
-9. Runs PDF and DOCX content/style/layout reviews (and a PDF review of the appendix) and fixes any issues before committing.
+8. **Generates the statistical appendix** as separate `.tex`, `.pdf`, and editable `.docx` files when the SCR.data supports it.
+9. Runs PDF and DOCX content/style/layout reviews for the report and appendix and fixes any issues before committing.
 10. Creates a git commit with the updated data, figures, documentation, the final monthly PDF and the appendix PDF. Report sources, build files, DOCX files, copied images, revision audits, and templates stay local and are ignored by Git.
 
 ## Release period
@@ -57,6 +57,8 @@ source .venv/bin/activate
 ```
 
 The `.venv` directory is in `.gitignore` and will not be committed.
+
+The editable appendix also requires the `pandoc` executable on `PATH`, to convert its LaTeX formulas into editable Word equations. Install Pandoc separately from the Python dependencies before building the appendix.
 
 ## Step-by-step commands
 
@@ -475,19 +477,19 @@ If the review changes the `.tex`, compile twice again, regenerate the DOCX, and 
 
 #### 5f. Build and review the statistical appendix
 
-The statistical appendix is a separate PDF, written for readers who want the statistics behind the report (decompositions, income classes, quality tests, methodology). It is built from the data, with its text generated from the numbers, after the report is final (it reuses the report's preamble, cover data, `logo.png`, `index.png` and `components_raw.png`):
+The statistical appendix is a separate document in PDF and editable Word formats, written for readers who want the statistics behind the report (decompositions, income classes, quality tests, methodology). It is built from the data, with its text generated from the numbers, after the report is final (it reuses the report's preamble, cover data, `logo.png` and `index.png`, and generates its own components figure):
 
 ```bash
 python3 -m src.build_appendix "$PERIOD"
 ```
 
-It writes `idc-apendice-${PERIOD}.tex` and `.pdf` into `$REPORT_DIR` (and four extra figures `apendice_*.png`). The command calls the SGS API (modalities, 2-decimal series) and refuses to mix vintages: if the API values differ from the workbook of the release by more than the workbook's rounding it stops with a message (the API was revised after the release; run the appendix in the cycle of the period). Exit codes:
+It writes `idc-apendice-${PERIOD}.tex`, `.pdf`, and editable `.docx` into `$REPORT_DIR` (and five extra figures `apendice_*.png`). The figures are collected in the final section and referenced from the text. The DOCX is generated automatically from the same appendix source; `--no-pdf` writes the `.tex` and `.docx` without compiling the PDF. The command calls the SGS API (modalities, 2-decimal series) and refuses to mix vintages: if the API values differ from the workbook of the release by more than the workbook's rounding it stops with a message (the API was revised after the release; run the appendix in the cycle of the period). Exit codes:
 
 - `0`: built. Review it as below.
 - `3`: not built in this edition because the SCR.data or the SGS series cannot support it (the message says why). The edition goes out without an appendix; do not mention this in the report.
 - `1`: error. Fix it (missing report or figures, vintage mismatch, LaTeX error) and run again.
 
-Review the appendix like the report (render every PDF page and inspect it at 100%): tables fit the text width and keep their source note inside the same float; every `\ref` resolves (the command reports undefined references and `Overfull \hbox` warnings); the numbers in the text agree with the tables; the cover names the same publication and reference months as the report; no template wording or `nan` appears. Do not edit the generated text by hand: it is regenerated from the data. If the wording itself needs a change, change `src/appendix_text.py` (and its tests), not the `.tex`. No DOCX is produced for the appendix.
+Review the appendix like the report: render every PDF and DOCX page and inspect each at 100%. Check that the Word file opens, remains editable, and matches the PDF and generated content, including tables, figures, captions, and source notes; check both formats for clipped or overlapping content. Tables must fit the text width and keep their source note together; every `\ref` must resolve (the command reports undefined references and `Overfull \hbox` warnings); the numbers in the text must agree with the tables; the cover must name the same publication and reference months as the report; and no template wording or `nan` may appear. Do not edit the generated text by hand: it is regenerated from the data. If the wording itself needs a change, change `src/appendix_text.py` (and its tests), not the `.tex`; regenerate and review both formats after changes.
 
 ---
 
@@ -556,7 +558,7 @@ After `python3 main.py` completes, verify:
 - [ ] `README.md` — the latest-release narrative around the managed tables has been manually reviewed and updated for the new release/reference month.
 - [ ] `python3 -m src.compare_releases PERIOD` — revision audit completed against the immediately preceding BCB workbook; newly added observations were not misclassified as revisions.
 - [ ] `python3 -m src.insert_low_income PERIOD --check` passes; the results table of the report shows the general and the low-income IDC; the report never mentions the statistical appendix.
-- [ ] `outputs/report/update-PERIOD/idc-apendice-PERIOD.pdf` — built and reviewed page by page (or `python3 -m src.build_appendix PERIOD` exited with code 3 and the reason is reported).
+- [ ] `outputs/report/update-PERIOD/idc-apendice-PERIOD.pdf` and `.docx` — built and reviewed page by page; Word content is editable and matches the PDF (or `python3 -m src.build_appendix PERIOD` exited with code 3 and the reason is reported).
 - [ ] The technical audit retains every revision at full precision, and the public-materiality decision is recorded separately. A routine section exists only when `|revision| >= 0.010` **and** the report's interpretation is affected, unless an explicit qualitative override applies. The table contains only material or indispensable comparison-base rows at three decimal places.
 - [ ] The fixed note beginning `Revisões dos dados. Os valores históricos do IDC...` is present under `Notas`, whether or not the optional public section exists.
 - [ ] `outputs/report/update-PERIOD/idc-update-PERIOD.tex` — no `\placeholder{...}` commands remain.
@@ -586,7 +588,7 @@ IDC/
 │   ├── scr_data.py                  # SCR.data download/validation/aggregation (python3 -m src.scr_data refresh)
 │   ├── low_income.py                # Low-income IDC: series, quality gate, report blocks
 │   ├── insert_low_income.py         # Adds the low-income IDC to the filled report .tex (step 5b2)
-│   ├── build_appendix.py            # Statistical appendix PDF (step 5f); appendix_*.py, exhibits.py, extras.py,
+│   ├── build_appendix.py            # Statistical appendix PDF and DOCX (step 5f); appendix_*.py, exhibits.py, extras.py,
 │   │                                #   lenses.py, anatomy.py, income_idc.py, ref_check.py, sgs_api.py, plot_extras.py,
 │   │                                #   pt_format.py, workbook_tables.py are its building blocks
 ├── data/
@@ -601,12 +603,13 @@ IDC/
     ├── template-docx/               # Local only: Word mirror of template.tex
     │   ├── template.docx            # Editable A4 Word template
     │   └── README.md                # Regeneration and fidelity notes
-    └── update-YYYYMM/               # Only the final PDF is committed
+    └── update-YYYYMM/               # Only the final report and appendix PDFs are committed
         ├── idc-update-YYYYMM.tex    # Local filled LaTeX source
         ├── idc-update-YYYYMM.pdf    # Reviewed final PDF (committed)
         ├── idc-update-YYYYMM.docx   # Local editable Word report
         ├── idc-apendice-YYYYMM.tex  # Local LaTeX source of the statistical appendix (generated)
         ├── idc-apendice-YYYYMM.pdf  # Reviewed appendix PDF (committed)
+        ├── idc-apendice-YYYYMM.docx # Local editable Word appendix
         ├── apendice_*.png          # Local figures of the appendix
         ├── logo.png                # Local copy of the logo
         ├── index.png               # Local copy of the main IDC chart

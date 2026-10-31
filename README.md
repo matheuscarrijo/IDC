@@ -166,7 +166,7 @@ $$
 
 ### 3.4. Apêndice estatístico
 
-Cada edição pode ter um **apêndice estatístico**, em PDF separado da nota (`outputs/report/update-YYYYMM/idc-apendice-YYYYMM.pdf`), gerado por `python -m src.build_appendix YYYYMM`. Ele detalha os dois índices, decompõe as variações de I, Q e C, decompõe I e Q por faixa de renda, credor, ocupação e unidade da federação, calcula o IDC para as quatro faixas de renda, testa o C nacional e documenta a conciliação e os limites do SCR.data. Todos os números do texto vêm dos dados.
+Cada edição pode ter um **apêndice estatístico**, em PDF e Word editável separados da nota (`outputs/report/update-YYYYMM/idc-apendice-YYYYMM.pdf` e `.docx`), gerado por `python -m src.build_appendix YYYYMM`. Ele detalha os dois índices, decompõe as variações de I, Q e C, decompõe I e Q por faixa de renda, credor, ocupação e unidade da federação, calcula o IDC para as quatro faixas de renda, testa o C nacional e documenta a conciliação e os limites do SCR.data. Todos os números do texto vêm dos dados.
 
 ## 4. Horizonte Temporal
 
@@ -224,10 +224,12 @@ python -m src.scr_data refresh   # baixa só os ZIPs anuais que mudaram (a prime
 
 ```bash
 python -m src.insert_low_income 202610   # insere o IDC para baixa renda no .tex preenchido da nota
-python -m src.build_appendix 202610      # gera o PDF do apêndice estatístico
+python -m src.build_appendix 202610      # gera o PDF e o Word editável do apêndice estatístico
 ```
 
-Cada nota mensal é gerada localmente em três formatos com o mesmo conteúdo: fonte LaTeX (`.tex`), PDF compilado (`.pdf`) e documento Word editável (`.docx`). Somente o PDF final é versionado e publicado no GitHub. Fontes, arquivos auxiliares de construção, DOCX, imagens copiadas para o relatório, auditorias de revisão e templates permanecem locais e são ignorados pelo Git. Depois de preencher e revisar o LaTeX, gere o DOCX diretamente da mesma fonte para evitar versões divergentes:
+Cada nota mensal e seu apêndice estatístico são gerados localmente em três formatos com o mesmo conteúdo: fonte LaTeX (`.tex`), PDF compilado (`.pdf`) e documento Word editável (`.docx`). Somente os PDFs finais são versionados e publicados no GitHub. Fontes, arquivos auxiliares de construção, DOCX, imagens copiadas para o relatório, auditorias de revisão e templates permanecem locais e são ignorados pelo Git. O comando do apêndice gera seu DOCX automaticamente a partir da mesma fonte; `--no-pdf` gera o `.tex` e o `.docx` sem compilar o PDF. Depois de preencher e revisar o LaTeX da nota, gere seu DOCX diretamente da mesma fonte para evitar versões divergentes:
+
+Para gerar o Word do apêndice, instale também o executável `pandoc` e deixe-o no `PATH`: ele converte as fórmulas em equações editáveis do Word.
 
 ```bash
 python -m src.build_report_docx \
@@ -237,7 +239,7 @@ python -m src.build_report_docx \
   --require-filled
 ```
 
-O processo mensal completo, inclusive a compilação e a revisão visual do PDF e do DOCX, está documentado em [`PIPELINE.md`](PIPELINE.md).
+O processo mensal completo, inclusive a compilação e a revisão visual dos PDFs e DOCXs da nota e do apêndice, está documentado em [`PIPELINE.md`](PIPELINE.md).
 
 Para gerar relatórios em uma nova cópia do repositório, disponibilize localmente o template mestre `outputs/report/template-latex/template.tex` e seu `logo.png`. Esses arquivos não são incluídos no clone do GitHub.
 
@@ -278,7 +280,7 @@ Para gerar relatórios em uma nova cópia do repositório, disponibilize localme
 │   ├── insert_low_income.py  # insere o IDC para baixa renda no .tex preenchido da nota
 │   ├── exhibits.py, extras.py, plot_extras.py, pt_format.py, workbook_tables.py  # tabelas, textos e figuras
 │   ├── appendix_data.py, appendix_text.py, appendix_document.py  # dados, texto e montagem do apêndice
-│   └── build_appendix.py # gera o PDF do apêndice estatístico
+│   └── build_appendix.py # gera o PDF e o Word editável do apêndice estatístico
 ├── outputs/
 │   ├── figures/         # 6 figuras (PNG)
 │   └── report/          # PDFs finais versionados; templates e auxiliares locais
@@ -320,7 +322,7 @@ As figuras de I, de Q, dos componentes normalizados e do índice mostram também
 - **`update-202610/idc-update-202610.pdf`** — nota mensal compilada e verificada; único formato da nota versionado no GitHub.
 - **`update-202610/idc-apendice-202610.pdf`** — apêndice estatístico da edição (quando o SCR.data permite gerá-lo), em documento separado da nota.
 
-O LaTeX preenchido, o Word editável, os templates, as imagens auxiliares e a auditoria técnica de revisão são preservados apenas no ambiente local de geração.
+As fontes LaTeX, os arquivos Word editáveis da nota e do apêndice, os templates, as imagens auxiliares e a auditoria técnica de revisão são preservados apenas no ambiente local de geração.
 
 ## 8. Estrutura e Fontes de Dados
 

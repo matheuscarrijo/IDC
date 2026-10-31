@@ -38,6 +38,19 @@ class ExtrasIntegrationTests(unittest.TestCase):
         for nome in ("anatomia", "preco_fluxo", "lentes", "idc_faixa"):
             self.assertTrue(r.textos[nome].strip())
 
+    def test_segment_tables_include_q_at_both_dates_like_i(self):
+        from src.exhibits import memo_sem_rendimento
+        from src.pt_format import num
+        r = self.build()
+        for name in ("faixa", "credor", "ocupacao"):
+            tex = r.tabelas[name]
+            self.assertIn("Q jul-2025 & Q jul-2026 & Contrib. Q", tex)
+            t = r.dados["tabs"][name]
+            key = t.index[0]
+            self.assertIn(num(t.loc[key, "Q_x_t0"], 2) + " & " + num(t.loc[key, "Q_x_t1"], 2), tex)
+        memo = memo_sem_rendimento(r.dados["ctx"], self.brutos["faixa"])
+        self.assertIn(num(memo["Q_t0"], 2) + " & " + num(memo["Q_t1"], 2), r.tabelas["faixa"])
+
     def test_layer1_survives_a_missing_scr_data(self):
         r = self.build(paineis=None)
         self.assertEqual(r.camada2, "SCR.data indisponível")

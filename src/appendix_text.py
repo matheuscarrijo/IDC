@@ -74,13 +74,13 @@ Este apêndice acompanha a Nota Técnica de Atualização do Índice de Desconfo
 \mespublicacao{{}} (competência \competencia), cujo último mês de referência é \mesreferencia{{}}. Ele reúne, em documento
 separado, as informações estatísticas que sustentam e ampliam a Nota: os dois índices nela apresentados (o IDC
 geral e o IDC para a população de baixa renda), a decomposição das variações de I, Q e C, as decomposições de I e Q por faixa
-de renda, credor, ocupação e unidade da federação, o IDC calculado para as quatro faixas de renda e os testes de qualidade e
-conciliação dos dados. A Nota é a referência para a leitura dos resultados; este apêndice não os altera nem os substitui.
+de renda, credor, ocupação e unidade da federação, o IDC calculado para as quatro faixas de renda e os testes de qualidade
+dos dados. A Nota é a referência para a leitura dos resultados; este apêndice não os altera nem os substitui.
 
 \paragraph{{Organização.}} A {S('sec:indices')} define os dois índices da Nota e detalha seus componentes. A {S('sec:anatomia')}
 decompõe as variações de I, Q e C com as séries do SGS. A {S('sec:segmentos')} decompõe I e Q por segmento com o SCR.data. A
-{S('sec:faixas')} apresenta o IDC para as quatro faixas de renda e seus limites. A {S('sec:qualidade')} trata da qualidade e da
-conciliação dos dados, e a {S('sec:metodologia')} descreve os métodos e as fontes. As tabelas e as figuras têm o prefixo A, para
+{S('sec:faixas')} apresenta o IDC para as quatro faixas de renda e seus limites. A {S('sec:qualidade')} trata da qualidade dos
+dados, e a {S('sec:metodologia')} descreve os métodos e as fontes. A {S('sec:figuras')} reúne as figuras mencionadas no texto. As tabelas e as figuras têm o prefixo A, para
 distingui-las das da Nota.
 
 \paragraph{{Convenções.}} Salvo indicação em contrário, as taxas são percentuais do saldo do crédito livre de pessoas físicas;
@@ -167,8 +167,6 @@ def s3_anatomia(d: DadosApendice, tabs: dict) -> str:
     cm, ca, qm, q = cq["cm"], cq["ca"], cq["qm"], cq["q"]
     ck, jk, ak, ek = ("C — serviço da dívida (SGS 29034)", "dos quais juros (SGS 29033)", "dos quais amortização (SGS 29036)",
                       cm.index[-1])
-    pf = d.ext.dados["preco_fluxo"]
-    tot, priv = pf.loc["Total do crédito livre PF"], pf.loc["Crédito pessoal — consignado, setor privado"]
     maior_q = qm["contribuicao"].abs().idxmax()
     return rf"""
 \section{{Anatomia das variações de I, Q e C}}\label{{sec:anatomia}}
@@ -187,19 +185,21 @@ e cuja inadimplência é de {pct(comp['I_t1'], 1)}.
 
 {tabs['anatomia']}
 
-A {T('tab:c_q')} apresenta C e Q. Q variou {pp(q.loc[t1] - q.loc[tp], 2)} no mês ({pct(q.loc[tp], 2)} para {pct(q.loc[t1], 2)}), principalmente
-{FRASE_PELO.get(maior_q, 'por ' + PRODUTOS[maior_q][0].lower())} ({pp(qm.loc[maior_q, 'contribuicao'], 2)}). C variou {pp(cm.loc[ck, 'delta'], 2)} ({pct(cm.loc[ck, 't0'], 2)} para
+A {T('tab:comprometimento')} apresenta o comprometimento de renda e seus componentes. C variou {pp(cm.loc[ck, 'delta'], 2)} ({pct(cm.loc[ck, 't0'], 2)} para
 {pct(cm.loc[ck, 't1'], 2)}), com {pp(cm.loc[jk, 'delta'], 2)} de juros e {pp(cm.loc[ak, 'delta'], 2)} de amortização; em 12 meses, C variou {num(ca.loc[ck, 'delta'], 2, True)}~p.p.,
 sendo {num(ca.loc[jk, 'delta'], 2, True)} de juros e {num(ca.loc[ak, 'delta'], 2, True)} de amortização. O endividamento (dívida sobre a renda de 12 meses) variou
 {pp(ca.loc[ek, 'delta'], 2)} em 12 meses.
 
-{tabs['c_q']}
+{tabs['comprometimento']}
 
-A {T('tab:preco_fluxo')} reúne taxas médias e concessões por modalidade, das Tabelas 11 e 16 da planilha mensal. A taxa média do crédito livre PF foi de
-{pct(tot['taxa_t1'], 1)} a.a. em {mes(t1)} ({pp(tot['taxa_delta'], 1)} em 12 meses). As concessões de consignado do setor privado somaram R\$~{num(priv['fluxo_12m_bi'], 1)}~bilhões em 12 meses
-({num(priv['fluxo_var_pct'], 1, True)}\%), a {pct(priv['taxa_t1'], 1)} a.a. A {F('fig:atribuicao')} mostra as contribuições mensais dos grupos de produtos à variação de I nos últimos 18 meses.
+A {F('fig:atribuicao')} mostra as contribuições mensais dos grupos de produtos à variação de I nos últimos 18 meses.
 
-{tabs['preco_fluxo']}
+A {T('tab:composicao_q')} reúne os saldos, pesos e taxas de juros disponíveis das modalidades que integram Q e das demais modalidades do crédito livre PF.
+Q variou {pp(q.loc[t1] - q.loc[tp], 2)} no mês ({pct(q.loc[tp], 2)} para {pct(q.loc[t1], 2)}), principalmente
+{FRASE_PELO.get(maior_q, 'por ' + PRODUTOS[maior_q][0].lower())} ({pp(qm.loc[maior_q, 'contribuicao'], 2)}). Os pesos são calculados sobre os saldos do crédito livre PF;
+as taxas de juros ilustram as diferenças entre as modalidades, mas não entram no cálculo do indicador.
+
+{tabs['composicao_q']}
 """
 
 
@@ -215,7 +215,6 @@ def _frase_quebras(d: DadosApendice, lente: str) -> str:
 
 def s4_segmentos(d: DadosApendice, tabs: dict) -> str:
     ext = d.ext
-    conc = ext.dados["conciliacao"]
     tb, decs = ext.dados["tabs"], ext.dados["decs"]
     t1, t0 = d.t1, d.t0
     dI = decs["faixa"]["dI"]
@@ -251,7 +250,6 @@ def s4_segmentos(d: DadosApendice, tabs: dict) -> str:
     ub = uf["contribuicao"].sort_values(ascending=False).head(3)
     ud = uf["dx"].sort_values(ascending=False).head(3)
     alto = uf["x_t1"].sort_values(ascending=False).head(3)
-    frase_uf_quebras = _frase_quebras(d, "uf") or "A unidade da federação não registrou variações de peso superiores a 2~p.p. no período. "
     ap, sv = oc.loc["Aposentado/pensionista"], oc.loc["Servidor ou empregado público"]
     return rf"""
 \section{{Decomposições por segmento}}\label{{sec:segmentos}}
@@ -259,14 +257,10 @@ def s4_segmentos(d: DadosApendice, tabs: dict) -> str:
 \subsection{{Universo e leitura das tabelas}}
 
 As tabelas desta seção usam o SCR.data, que o Banco Central divulga cerca de um mês depois do fechamento e reprocessa continuamente ({S('sec:qualidade')}). O universo
-é o crédito livre de pessoas físicas, sem financiamento rural, imobiliário e de exportação ou importação, e equivale a {pct(100 + conc['gap_carteira_pct'], 1)} do saldo do
-SGS~20570 em {mes(t1)} ({T('tab:conc_t1')}). Cada tabela decompõe a variação de I e a de Q em 12 meses em contribuições de cada segmento, somando o efeito da
-variação da taxa do segmento (\emph{{dentro}}) e o da mudança de seu peso na carteira (\emph{{composição}}). A linha ``Total (SCR.data)'' soma as contribuições; a linha
-``Variação oficial (SGS)'' traz a variação dos mesmos indicadores no SGS, e a diferença entre as duas é o resíduo de conciliação. Em {mes(t1)}, o resíduo de I é de
-{num(abs(conc['gap_I_delta']), 2)}~p.p. (status {conc['status']}) e o de Q, de {num(abs(conc['gap_Q_delta']), 2)}~p.p. (status {conc['status_Q']}); por isso a coluna ``Contrib. Q'' é indicativa. O nível de Q no SCR.data
-({pct(conc['Q_scr_t1'], 1)}) fica abaixo do oficial ({pct(conc['Q_sgs_t1'], 1)}) por diferenças de classificação das modalidades entre as fontes.
-
-{tabs['conc_t1']}
+é o crédito livre de pessoas físicas, sem financiamento rural, imobiliário e de exportação ou importação. Cada tabela decompõe a variação de I e a de Q em 12 meses
+em contribuições de cada segmento, somando o efeito da variação da taxa do segmento (\emph{{dentro}}) e o da mudança de seu peso na carteira (\emph{{composição}}).
+As contribuições somam as variações calculadas no SCR.data, que podem diferir das variações dos componentes do IDC geral, calculadas com séries do SGS. As tabelas apresentam ambas
+para facilitar a comparação.
 
 \subsection{{Faixa de renda}}
 
@@ -297,9 +291,9 @@ A {T('tab:ocupacao')} segue a natureza da ocupação principal, segundo o cadast
 
 \subsection{{Unidade da federação}}
 
-A {T('tab:uf')} traz as unidades da federação, definidas pelo CEP de residência do tomador. As maiores contribuições à variação de I vêm de {_lista([f'{k} ({pp(v, 2)})' for k, v in ub.items()])}, em boa parte por seus pesos na carteira;
+A {T('tab:uf')} apresenta a inadimplência e o crédito oneroso por unidade da federação. As maiores contribuições à variação de I vêm de {_lista([f'{k} ({pp(v, 2)})' for k, v in ub.items()])}, em boa parte por seus pesos na carteira;
 as maiores variações da inadimplência foram as de {_lista([f'{k} ({pp(v, 2)})' for k, v in ud.items()])}, e as maiores taxas em {mes(t1)} são as de {_lista([f'{k} ({pct(v, 2)})' for k, v in alto.items()])}.
-{frase_uf_quebras}As {Fs('fig:lentes', 'fig:uf')} resumem as contribuições por segmento e a inadimplência por unidade da federação.
+As {Fs('fig:lentes', 'fig:uf')} resumem, respectivamente, as contribuições por segmento e a inadimplência por unidade da federação.
 
 {tabs['uf']}
 """
@@ -312,10 +306,9 @@ def s5_faixas(d: DadosApendice, tabs: dict) -> str:
     t1 = d.t1
     var = {fx: r.loc[fx, "IDC_t1"] - r.loc[fx, "IDC_t0"] for fx in L.FAIXAS_INDICE}
     maior = max(var, key=var.get)
-    base, janela, rees = s.index[0], s.index[1], s.index[2]
+    base, janela = "Base (janela jul/2012)", "Janela desde jan/2014"
     col_max = "máx |dif. vs base| (2015-)"
     dif_j = {fx: s.loc[janela, fx] - s.loc[base, fx] for fx in L.FAIXAS_INDICE}
-    dif_r = {fx: s.loc[rees, fx] - s.loc[base, fx] for fx in L.FAIXAS_INDICE}
     itens = _lista([f"{FAIXA_TEXTO[fx]} ({num(r.loc[fx, 'IDC_t1'], 3)})" for fx in L.FAIXAS_INDICE])
     n_sobe = sum(v > 0 for v in var.values())
     sobe = "nas quatro faixas" if n_sobe == 4 else f"em {n_sobe} das quatro faixas"
@@ -355,9 +348,8 @@ e a maior alta foi na faixa {FAIXA_TEXTO[maior]} ({num(var[maior], 3, True)} pon
 nível de desconforto: {frase_topo}. Por isso o índice por faixa não deve ser usado para ordenar faixas por desconforto, e cada faixa deve ser comparada com ela mesma ao longo do tempo. A faixa de
 ``renda indisponível'' fica fora do índice.
 
-\paragraph{{Sensibilidade.}} A {T('tab:sensibilidade')} testa duas escolhas de construção. Iniciar a janela em jan-2014, em vez de jul-2012, altera o valor de {mes(t1)} em
-{_lista([f'{num(abs(dif_j[fx]), 3)} ({FAIXA_TEXTO[fx]})' for fx in L.FAIXAS_INDICE])}; no período exibido, a diferença absoluta máxima é de {num(s.loc[janela, col_max], 3)}{frase_max}, e a média absoluta desde 2018 não passa de {num(se['media_abs_2018'], 3)}. Reescalar I e Q ao total oficial do SGS altera o valor de {mes(t1)} em até
-{num(max(abs(v) for v in dif_r.values()), 3)} e, no histórico exibido, em até {num(s.loc[rees, col_max], 3)}.
+\paragraph{{Sensibilidade.}} A {T('tab:sensibilidade')} testa a escolha da data inicial da janela. Iniciar a janela em jan-2014, em vez de jul-2012, altera o valor de {mes(t1)} em
+{_lista([f'{num(abs(dif_j[fx]), 3)} ({FAIXA_TEXTO[fx]})' for fx in L.FAIXAS_INDICE])}; no período exibido, a diferença absoluta máxima é de {num(s.loc[janela, col_max], 3)}{frase_max}, e a média absoluta desde 2018 não passa de {num(se['media_abs_2018'], 3)}.
 
 {tabs['sensibilidade']}
 
@@ -376,20 +368,8 @@ O C nacional é, portanto, uma aproximação: acompanha parte da dinâmica de ca
 
 # ================================================================================ 6. qualidade
 def s6_qualidade(d: DadosApendice, tabs: dict) -> str:
-    h, full, v = d.conc_hist, d.conc_full, d.vintage
+    v = d.vintage
     t1 = d.t1
-    ok_i, al_i = int((h["status"] == "ok").sum()), int((h["status"] != "ok").sum())
-    ok_q, al_q = int((h["status_Q"] == "ok").sum()), int((h["status_Q"] != "ok").sum())
-    meses_al = list(h.index[h["status"] != "ok"])
-    gaps_al = h.loc[meses_al, "gap_I_nivel"]
-    frase_gap = (f", com diferença de nível (SCR.data menos SGS) de {num(gaps_al.min(), 2, True)} a {num(gaps_al.max(), 2, True)}~p.p. nos meses em alerta ({_meses(meses_al)})" if meses_al else "")
-    n_full = len(full)
-    bloq = int(((full["status"] == "bloqueio") | (full["status_Q"] == "bloqueio")).sum())
-    ok_i_f, ok_q_f = int((full["status"] == "ok").sum()), int((full["status_Q"] == "ok").sum())
-    sem_alerta = full["status"].eq("ok").groupby(full.index.year).all()
-    anos_ok = [int(a) for a in sem_alerta.index if sem_alerta.loc[a] and a < t1.year]
-    bloq_txt = "nenhuma conciliação chegou ao bloqueio" if bloq == 0 else f"{bloq} conciliações chegaram ao bloqueio"
-    fecho = (f", e o status de I foi \\emph{{ok}} em todos os meses {_periodo(anos_ok, 'de')}." if anos_ok else ".")
     jan, js, cen = d.janeiros, d.jan_stats, d.cenarios
     grp = d.quebras[(d.quebras["lente"] == "faixa") & (d.quebras["unidade"] == BAIXA_RENDA)]
     altas_jan = sorted(set(grp[(grp["data_base"].dt.month == 1) & (grp["variacao_pp"] > 0)]["data_base"].dt.year))
@@ -409,23 +389,56 @@ def s6_qualidade(d: DadosApendice, tabs: dict) -> str:
     atraso = (v["gerado_t1"].normalize() - fim_mes).days
     lista_altas = f"altas em janeiro de {_lista([str(a) for a in altas_jan])}" if altas_jan else "nenhuma alta em janeiro"
     lista_quedas = f" e quedas em {_meses(fora)}" if fora else ""
+    painel_faixa = d.paineis["faixa"]
+    pesos = L.taxas(painel_faixa)["peso"].unstack()
+    saldos = painel_faixa["carteira"].unstack()
+    junho_2016, maio_2016 = pd.Timestamp("2016-06-01"), pd.Timestamp("2016-05-01")
+    if t1 >= junho_2016 and {maio_2016, junho_2016}.issubset(pesos.index):
+        delta_junho = pesos.at[junho_2016, BAIXA_RENDA] - pesos.at[maio_2016, BAIXA_RENDA]
+        posicao = "abaixo do limiar da tabela" if abs(delta_junho) <= 2 else "acima do limiar da tabela"
+        houve_salto_janeiro = any(grp["data_base"] == pd.Timestamp("2016-01-01"))
+        comparacao_janeiro = " A mudança de regra ocorreu cinco meses depois do salto de jan-2016." if houve_salto_janeiro else ""
+        contexto_limite = (
+            "Em jun-2016, o limite para o reporte individualizado ao SCR caiu de R\\$~1.000 para R\\$~200 "
+            "no conjunto das operações de cada cliente por instituição (Circular BCB nº~3.786/2016). "
+            f"Nesse mês, o peso da faixa até 2~SM variou {pp(delta_junho, 2)} ({posicao})."
+            + comparacao_janeiro + " "
+            "A coincidência em junho não demonstra quanto do movimento decorreu da nova regra."
+        )
+    else:
+        contexto_limite = ""
+    junho_2025, julho_2025 = pd.Timestamp("2025-06-01"), pd.Timestamp("2025-07-01")
+    if (t1 >= julho_2025 and {junho_2025, julho_2025}.issubset(saldos.index)
+            and {BAIXA_RENDA, "Mais de 10 SM"}.issubset(saldos.columns)):
+        variacao = (saldos.loc[julho_2025] - saldos.loc[junho_2025]) / 1e9
+        variacao_total = 100 * (saldos.loc[julho_2025].sum() / saldos.loc[junho_2025].sum() - 1)
+        contexto_julho = (
+            f"Entre jun-2025 e jul-2025, o saldo da faixa até 2~SM variou R\\$~{num(variacao[BAIXA_RENDA], 1, True)}~bilhões, "
+            f"o da faixa acima de 10~SM variou R\\$~{num(variacao['Mais de 10 SM'], 1, True)}~bilhões e o saldo total "
+            f"do crédito livre PF variou {pct(variacao_total, 2)}. Esses agregados não permitem identificar se houve "
+            "mudança de classificação de tomadores ou baixas a prejuízo em uma data específica."
+        )
+    else:
+        contexto_julho = ""
+    contexto_baixas = (
+        "Desde jan-2025, novas regras contábeis alteraram os critérios de baixa a prejuízo. Segundo o Relatório de Política Monetária "
+        "do Banco Central de setembro de 2025, operações inadimplentes permaneceram, em geral, mais tempo na carteira no início daquele ano, "
+        "contribuindo para a alta da inadimplência agregada. Esse resultado não identifica a causa das variações por faixa de renda."
+        if t1 >= pd.Timestamp("2025-09-01") else ""
+    )
     return rf"""
-\section{{Qualidade e conciliação dos dados}}\label{{sec:qualidade}}
+\section{{Qualidade dos dados}}\label{{sec:qualidade}}
 
-\subsection{{Conciliação do SCR.data com o SGS}}
+\subsection{{Mudanças abruptas de peso}}
 
-O SCR.data e o SGS partem de documentos diferentes do Banco Central e não coincidem exatamente. A conciliação compara, a cada mês, o I e o Q do universo do
-SCR.data com os valores oficiais, no nível e na variação de 12 meses. O status é \emph{{ok}} quando a diferença é de até 0,25~p.p., \emph{{alerta}} até 0,75~p.p. e \emph{{bloqueio}} acima disso;
-no caso de I, vale a pior das duas diferenças (nível e variação), e no de Q, apenas a da variação, porque o nível de Q no SCR.data fica de 0,1 a 0,5~p.p. abaixo do oficial. A {T('tab:conc_hist')}
-mostra os 12 meses de referência mais recentes: o status de I foi \emph{{ok}} em {ok_i} e \emph{{alerta}} em {al_i}{frase_gap}; o de Q foi \emph{{ok}} em {ok_q} e \emph{{alerta}} em {al_q}. Entre jan-2016 e {mes(t1)} ({n_full} meses),
-o status de I foi \emph{{ok}} em {ok_i_f} meses e o de Q, em {ok_q_f}; {bloq_txt}{fecho}
+A {T('tab:quebras')} lista as mudanças de peso superiores a 2~p.p. em um único mês, que exigem cautela nas comparações que as atravessem e podem refletir alterações na composição da carteira ou em seu registro. Para o IDC para baixa renda, importam as da faixa de
+renda até 2~SM: {lista_altas} (tratadas adiante){lista_quedas}.{frase_queda} As tabelas por segmento sinalizam as mudanças de mais de 1~p.p. que caem na janela de 12 meses.
 
-{tabs['conc_hist']}
+{contexto_limite}
 
-\subsection{{Reclassificações de peso}}
+{contexto_julho}
 
-A {T('tab:quebras')} lista as mudanças de peso superiores a 2~p.p. em um único mês, que sugerem reclassificações no SCR e comprometem comparações que as atravessem. Para o IDC para baixa renda, importam as da faixa de
-renda até 2~SM: {lista_altas} (tratadas adiante){lista_quedas}.{frase_queda} As tabelas por segmento sinalizam as reclassificações de mais de 1~p.p. que caem na janela de 12 meses.
+{contexto_baixas}
 
 {tabs['quebras']}
 
@@ -438,7 +451,7 @@ Q também sobe: em {js['q_pos_grupo']} dos {js['n']} anos no grupo e em {js['q_p
 {tabs['janeiros']}
 
 Para medir o efeito desses saltos sobre o IDC para baixa renda, a {T('tab:cenarios')} substitui, nos meses de salto, as variações de I e de Q do grupo pelas da série geral e recalcula o índice. Em {mes(t1)}, a variação é de
-{num(cen.loc['janeiros', 'var_t1'], 3, True)} ponto sem os saltos de janeiro, {num(cen.loc['fora_jan', 'var_t1'], 3, True)} sem as reclassificações de {_meses(fora)} e {num(cen.loc['ambos', 'var_t1'], 3, True)} sem ambos; no período exibido, a diferença absoluta máxima é de
+{num(cen.loc['janeiros', 'var_t1'], 3, True)} ponto sem os saltos de janeiro, {num(cen.loc['fora_jan', 'var_t1'], 3, True)} sem as mudanças de peso de {_meses(fora)} e {num(cen.loc['ambos', 'var_t1'], 3, True)} sem ambos; no período exibido, a diferença absoluta máxima é de
 {num(cen.loc['ambos', 'max_abs'], 3)} ({mes(cen.loc['ambos', 'mes_max'])}), e a média, de {num(cen.loc['ambos', 'media_abs'], 3)}. Os efeitos não são aditivos, porque a normalização usa os extremos históricos. Em {mes(t1)}, I do grupo ({pct(d.f.i['t1'], 2)}) supera em {num(margem, 2)}~p.p. o máximo registrado até {mes(d.t0 - pd.DateOffset(months=1))}
 ({pct(i_prev_max, 2)}, em {mes(mes_prev_max)}){frase_desloc}, deslocamentos de nível desse tamanho alteram o valor normalizado de I. A tabela é, portanto, um teste de sensibilidade, e não uma série corrigida.
 
@@ -453,6 +466,12 @@ Como o Banco Central reprocessa os arquivos continuamente, valores de um mesmo m
 
 # ================================================================================ 7. metodologia
 def s7_metodologia(d: DadosApendice) -> str:
+    fontes_adicionais = []
+    if d.t1 >= pd.Timestamp("2016-06-01"):
+        fontes_adicionais.append(r"\item Banco Central do Brasil, Circular nº 3.786/2016: \url{https://normativos.bcb.gov.br/Lists/Normativos/Attachments/50168/Circ_3786_v2_L.pdf}.")
+    if d.t1 >= pd.Timestamp("2025-09-01"):
+        fontes_adicionais.append(r"\item Banco Central do Brasil, Relatório de Política Monetária, set-2025, p. 64--66: \url{https://bcb.gov.br/publicacoes/rpm/202509}.")
+    referencias = "\n  ".join(fontes_adicionais)
     return rf"""
 \section{{Metodologia e fontes}}\label{{sec:metodologia}}
 
@@ -483,10 +502,9 @@ que usa apenas informação até o mês $t$. No IDC geral, a janela começa em m
 exibido desde jan-2014 (34 meses de aquecimento). I e Q das faixas de renda começam em jul-2012, primeiro mês do SCR.data, e são exibidos desde {mes(d.f.inicio)}, com o mesmo aquecimento; C é o do IDC geral. O IDC por faixa é a média
 de C, I e Q normalizados.
 
-\subsection{{Conciliação e sinalização}}
+\subsection{{Sinalização de mudanças de peso}}
 
-O status de conciliação usa os limiares de 0,25~p.p. (alerta) e 0,75~p.p. (bloqueio) sobre a diferença entre o SCR.data e o SGS, no nível de I e na variação de 12 meses de I e de Q. Uma reclassificação é sinalizada quando o peso de um segmento
-varia mais de 1~p.p. em um mês (a {T('tab:quebras')} lista as superiores a 2~p.p.). Os limiares são parâmetros do cálculo e podem ser revistos.
+Uma mudança é sinalizada quando o peso de um segmento varia mais de 1~p.p. em um mês (a {T('tab:quebras')} lista as superiores a 2~p.p.). Os limiares são parâmetros do cálculo e podem ser revistos; a sinalização não identifica a causa da mudança.
 
 \subsection{{Fontes e licença}}
 
@@ -495,5 +513,6 @@ varia mais de 1~p.p. em um mês (a {T('tab:quebras')} lista as superiores a 2~p.
   \item Banco Central do Brasil, Estatísticas Monetárias e de Crédito (planilha mensal, divulgação \competencia): Tabelas 4, 7, 11, 16 e 27.
   \item Banco Central do Brasil, SCR.data (dados agregados do Sistema de Informações de Créditos), versão 2, disponível em \url{{https://dadosabertos.bcb.gov.br/dataset/scr_data}}, distribuído sob a licença Open Database License (ODbL).
   \item Banco Central do Brasil, Relatório de Estabilidade Financeira de abril de 2025, Anexo Estatístico, Gráfico 1.2.2.16 (CRI por faixa de renda).
+  {referencias}
 \end{{itemize}}
 """

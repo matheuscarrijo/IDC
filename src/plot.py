@@ -737,7 +737,8 @@ def _overlay(draw, *args) -> None:
         print(f"  aviso: linhas de baixa renda omitidas ({exc!r})")
 
 
-def _plot_components_raw(components: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
+def _plot_components_raw(components: pd.DataFrame, low_income: Optional[pd.DataFrame] = None, *,
+                         output_path: Optional[Path] = None, low_income_legend: bool = True) -> None:
     """Three stacked panels (shared x-axis) — fits A4 page width."""
     fig, axes = plt.subplots(3, 1, figsize=(_FIG_W, 7.2), sharex=True)
     fig.subplots_adjust(hspace=0.4)
@@ -849,8 +850,16 @@ def _plot_components_raw(components: pd.DataFrame, low_income: Optional[pd.DataF
         fontsize=14, fontweight="bold", y=1.01,
     )
     if low_income is not None:
-        _overlay(overlay.components_raw, fig, low_income)
-    _save(fig, "components_raw.png")
+        if low_income_legend:
+            _overlay(overlay.components_raw, fig, low_income)
+        else:
+            overlay.components_raw(fig, low_income, legend=False)
+    if output_path is None:
+        _save(fig, "components_raw.png")
+    else:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=_DPI, bbox_inches="tight")
+        plt.close(fig)
 
 
 def _plot_components_raw_individual(components: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
