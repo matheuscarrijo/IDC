@@ -194,5 +194,46 @@ class FactsFromDataTests(unittest.TestCase):
                 F.facts_from_data(folder)
 
 
+
+class ReleaseCheckTests(unittest.TestCase):
+    """The processed data must come from the workbook of the release of the report (stamped by main.py)."""
+
+    def setUp(self):
+        import main
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        self.raw, self.processed = root / "raw", root / "processed"
+        self.processed.mkdir()
+        self.workbooks = {}
+        for period in ("202609", "202610"):
+            folder = self.raw / period
+            folder.mkdir(parents=True)
+            self.workbooks[period] = folder / f"{period}_Tabelas_de_estatisticas_monetarias_e_de_credito.xlsx"
+            self.workbooks[period].write_bytes(period.encode())
+        self.stamp = lambda period: main.write_release_stamp(self.workbooks[period], pd.Timestamp("2026-08-01"),
+                                                             self.processed / "release.json")
+
+    def test_data_of_the_release_of_the_report_are_accepted(self):
+        self.stamp("202610")
+        F.check_release("202610", self.processed, self.raw)
+
+    def test_a_new_workbook_without_rerunning_main_is_refused(self):
+        self.stamp("202609")  # the 202610 workbook was downloaded, but main.py has not run on it yet
+        with self.assertRaisesRegex(ValueError, "divulgação 202609, não 202610"):
+            F.check_release("202610", self.processed, self.raw)
+
+    def test_data_without_a_stamp_are_refused(self):
+        with self.assertRaisesRegex(ValueError, "release.json ausente"):
+            F.check_release("202610", self.processed, self.raw)
+
+    def test_a_workbook_replaced_after_main_ran_is_refused(self):
+        self.stamp("202610")
+        self.workbooks["202610"].write_bytes(b"another download")
+        with self.assertRaisesRegex(ValueError, "não é a que gerou os dados processados"):
+            F.check_release("202610", self.processed, self.raw)
+
+
 if __name__ == "__main__":
     unittest.main()

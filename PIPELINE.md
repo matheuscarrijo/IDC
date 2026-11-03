@@ -330,7 +330,7 @@ REPORT_DIR="outputs/report/update-${PERIOD}"
 
 The command:
 
-1. refuses to run when the latest workbook in `data/raw/` is not the one of `PERIOD`, or when an already filled report names another reference month (`\mesref`): numbers of another release never enter a report;
+1. refuses to run unless `data/processed/release.json` names `PERIOD` and the checksum of its workbook in `data/raw/PERIOD/` (`main.py` writes this stamp only after all its outputs, and removes it when a run starts), or when an already filled report names another reference month (`\mesref`): numbers of another release never enter a report, even when a new workbook was downloaded and `main.py` has not run on it yet;
 2. creates `$REPORT_DIR`, copies `template.tex` to `idc-update-${PERIOD}.tex` **only if that file does not exist yet**, and refreshes `logo.png`, `index.png`, `index_since_2022.png`, `index_12m.png` and `components_raw.png` in the directory;
 3. fills `\mesreferencia`, `\mesref`, `\mesanterior`, `\competencia`, `\mespublicacao` and `\reportdate` (nominal release month, `Mês de AAAA`, never today's date);
 4. regenerates every block between `% >>> IDC (name)` and `% <<< IDC (name)`, and validates the result.
@@ -488,6 +488,7 @@ git add README.md \
         data/processed/low_income_idc.csv \
         data/processed/low_income_status.json \
         data/processed/sgs_snapshot.csv \
+        data/processed/release.json \
         data/processed/scr/
 
 # Only the two official BCB inputs are force-added from the ignored raw folder.
@@ -611,7 +612,7 @@ IDC/
 | HTTP 404 on download | Scheduled BCB release not yet published | Stop without modifying files and retry the same period on the next scheduled run |
 | `python3 -m src.scr_data refresh` fails | Network failure, BCB server error, or a ZIP that stays truncated after retries | Report it and continue; the low-income IDC is then unavailable if the aggregates do not cover the reference month. Retry on the next scheduled run of the cycle |
 | `low_income_status.json` has `bloqueio` | SCR.data national I or Q differs from the official series by more than 0.75 p.p. | Do not publish the low-income index; inspect `conciliacao` in the JSON, run the refresh again, and report the numbers |
-| `fill_report` says `o relatório trata de X, mas os dados processados terminam em Y` or `o release mais recente … não …` | The processed data belong to another release than the report (for example the report of an older period after `main.py` ran for a newer one) | Run `python3 main.py` with the release of the report, or fill the report of the current period; never edit the month by hand |
+| `fill_report` says `o relatório trata de X, mas os dados processados terminam em Y`, `os dados processados são da divulgação …` or `release.json ausente` | The processed data belong to another release than the report (for example the report of an older period after `main.py` ran for a newer one) | Run `python3 main.py` with the release of the report, or fill the report of the current period; never edit the month by hand |
 | `fill_report` says `bloco gerado ausente` | The report lost a generated block, or it was filled before the 202610 layout | Restore the block markers from the template (or start the `.tex` again from the template, keeping any authors' comment and revision section) and run again |
 | `build_appendix` says the SGS series are not from the same vintage as the workbook | The SGS API was revised after the release being processed | Build the appendix in the cycle of the release; `--ignore-vintage` exists only for tests |
 | `build_appendix` exits with code 3 | SCR.data or SGS series cannot support the appendix in this edition | Publish the report without an appendix and say nothing about it in the report |

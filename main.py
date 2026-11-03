@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -14,6 +16,7 @@ from src.load_data import find_latest_bcb_table, load_raw_series
 from src.plot import plot_all
 
 DATA_OUT = Path("data/processed")
+RELEASE_JSON = DATA_OUT / "release.json"
 README_PATH = Path("README.md")
 README_LATEST_START = "<!-- IDC_LATEST_START -->"
 README_LATEST_END = "<!-- IDC_LATEST_END -->"
@@ -31,9 +34,13 @@ PT_MONTH_ABBR = {
 
 def main() -> None:
     DATA_OUT.mkdir(parents=True, exist_ok=True)
+    # The stamp of the release is written only after every output of this run; a run that stops midway leaves
+    # none, so that src.fill_report never fills a report with outputs of mixed releases.
+    RELEASE_JSON.unlink(missing_ok=True)
 
     print("Carregando dados do BCB...")
-    raw = load_raw_series()
+    table = find_latest_bcb_table()
+    raw = load_raw_series(table)
     raw.to_csv(DATA_OUT / "series_raw.csv")
 
     print("Construindo componentes (C, I, Q)...")
@@ -76,7 +83,19 @@ def main() -> None:
 
     _update_readme(components, index_df, low)
     plot_all(components, index_df, low_income=low.serie if low.disponivel else None)
+    write_release_stamp(table, index_df["index"].dropna().index[-1])
     _print_summary(index_df, low)
+
+
+def write_release_stamp(table: Path, reference_month, path: Path | None = None) -> None:
+    """Record which BCB workbook produced the processed data and figures (checked by src.fill_report)."""
+    path = path or RELEASE_JSON
+    path.write_text(json.dumps({
+        "release": table.parent.name,
+        "workbook": table.name,
+        "sha256": hashlib.sha256(table.read_bytes()).hexdigest(),
+        "mes_referencia": f"{reference_month:%Y-%m}",
+    }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 REPORT_SHEET = "Séries do relatório"

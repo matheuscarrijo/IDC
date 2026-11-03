@@ -12,9 +12,10 @@ losing what was added by hand to the report: the optional ``Revisões dos dados`
 of the authors (``quote`` environment at the end of ``Trajetória dos índices``).  The report never refers to
 any other document, and its numbers must not be changed by hand: fix the data and run the step again.
 
-The processed data must belong to the release of the report (the latest workbook in ``data/raw/`` is the one of
-``PERIOD``) and to its reference month (``\\mesref`` of an already filled report); otherwise nothing is written,
-so that numbers of another release never enter a report.
+The processed data must belong to the release of the report (``data/processed/release.json``, stamped by
+``main.py`` after all its outputs, names ``PERIOD`` and the checksum of its workbook) and to its reference month
+(``\\mesref`` of an already filled report); otherwise nothing is written, so that numbers of another release never
+enter a report.
 
 Command line (from the repository root, after ``python3 main.py``)::
 
@@ -24,6 +25,8 @@ Command line (from the repository root, after ``python3 main.py``)::
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import re
 import shutil
 import sys
@@ -154,9 +157,22 @@ def validate(tex: str) -> list[str]:
     return problems
 
 
-def _latest_release(raw_dir: Path = RAW_DIR) -> str | None:
-    periods = sorted(p.name for p in raw_dir.glob("[0-9]" * 6) if p.is_dir())
-    return periods[-1] if periods else None
+def check_release(period: str, data_dir: Path = Path("data/processed"), raw_dir: Path = RAW_DIR) -> None:
+    """Refuse processed data that ``main.py`` did not produce from the workbook of ``period``.
+
+    ``main.py`` stamps ``release.json`` after all its outputs, with the release and the checksum of the workbook it
+    read.  The stamp must name ``period``, and the workbook in ``data/raw/period/`` must still be that file.
+    """
+    stamp_path = data_dir / "release.json"
+    if not stamp_path.exists():
+        raise ValueError(f"{stamp_path} ausente: os dados processados não têm divulgação registrada; rode python3 main.py")
+    stamp = json.loads(stamp_path.read_text(encoding="utf-8"))
+    if stamp.get("release") != period:
+        raise ValueError(f"os dados processados são da divulgação {stamp.get('release')}, não {period}; "
+                         "rode python3 main.py com a planilha da divulgação do relatório")
+    workbook = raw_dir / period / str(stamp.get("workbook"))
+    if not workbook.exists() or hashlib.sha256(workbook.read_bytes()).hexdigest() != stamp.get("sha256"):
+        raise ValueError(f"a planilha {workbook} não é a que gerou os dados processados; rode python3 main.py de novo")
 
 
 def facts_from_data(data_dir: Path = Path("data/processed")) -> tuple[RT.FatosIndice, RT.FatosIndice | None, LI.Resultado]:
@@ -205,10 +221,7 @@ def main(argv: list[str] | None = None) -> int:
         print("\n".join(problems) if problems else "Relatório válido.")
         return 1 if problems else 0
     try:
-        latest = _latest_release()
-        if latest != args.period:
-            raise ValueError(f"o release mais recente em {RAW_DIR} é {latest}, não {args.period}; "
-                             "os dados processados não pertencem ao release do relatório")
+        check_release(args.period)
         geral, baixa, resultado = facts_from_data()
         path = prepare(args.period)
         new = fill(path.read_text(encoding="utf-8"), args.period, geral, baixa, resultado)

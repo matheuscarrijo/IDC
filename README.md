@@ -308,6 +308,7 @@ As séries mostradas no relatório estão reunidas em **`idc_data.xlsx`**, aba "
 - **`components_raw.csv`** — componentes C, I, Q antes da normalização
 - **`index.csv`** — componentes normalizados (C_norm, I_norm, Q_norm) e índice agregado (a partir de jan-2014)
 - **`low_income_idc.csv`** — IDC Baixa Renda: I e Q do grupo (em %), seus valores normalizados, C normalizado e o índice (a série é calculada desde jul-2012 e exibida a partir de mai-2015)
+- **`release.json`** — divulgação do BCB (planilha e soma de verificação) que gerou os dados processados e as figuras da última rodada
 - **`low_income_status.json`** — situação do IDC Baixa Renda na última rodada (`ok`, `bloqueio`, `sem_cobertura` ou `sem_dados`), o motivo e os números da conciliação com as séries oficiais
 - **`scr/`** — agregados mensais do SCR.data por faixa de renda, credor, ocupação e unidade da federação, e as datas de geração dos arquivos do Banco Central
 - **`sgs_snapshot.csv`** — séries do SGS usadas no apêndice (saldos e inadimplência por modalidade e partes do comprometimento de renda)

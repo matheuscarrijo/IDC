@@ -8,6 +8,7 @@
 | `processed/index.csv` | IDC Geral (`index`) e componentes normalizados `C_norm`, `I_norm`, `Q_norm` (0 = melhor, 1 = pior), desde jan-2014 |
 | `processed/components_raw.csv` | Componentes brutos: C e I em %, Q como fração do crédito livre PF |
 | `processed/low_income_idc.csv` | IDC Baixa Renda (renda até 2 salários mínimos): I e Q em %, normalizados, C nacional normalizado e `IDC`; desde jul-2012, exibido desde mai-2015 |
+| `processed/release.json` | Divulgação do BCB (e soma de verificação da planilha) que gerou os dados e as figuras da última rodada |
 | `processed/low_income_status.json` | Situação do IDC Baixa Renda na última rodada (`ok`, `bloqueio`, `sem_cobertura`, `sem_dados`) e conciliação com as séries oficiais |
 | `processed/series_raw.csv` | Séries do BCB usadas no cálculo (comprometimento de renda, inadimplência e saldos do crédito livre PF por modalidade) |
 | `processed/sgs_snapshot.csv` | Séries do SGS usadas no apêndice estatístico |
