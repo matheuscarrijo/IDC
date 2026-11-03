@@ -16,7 +16,7 @@ from typing import Iterable
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.style import WD_STYLE_TYPE
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.image.image import Image as DocxImage
 from docx.oxml import OxmlElement
@@ -31,8 +31,16 @@ BLACK = RGBColor(0, 0, 0)
 GRAY = RGBColor(95, 95, 95)
 PLACEHOLDER_RED = RGBColor(155, 35, 35)
 FIGURE_WIDTH_MM = 150.0
-FIGURE_MAX_HEIGHT_MM = {1: 150.0, 2: 180.0}
-FIGURE_PLACEHOLDER_HEIGHT_MM = {1: 140.0, 2: 170.0}
+# Tallest rendering allowed at full text width, by chart; other charts use the default.
+FIGURE_MAX_HEIGHT_MM = {"index.png": 150.0, "index_since_2022.png": 150.0, "index_12m.png": 150.0, "components_raw.png": 180.0}
+FIGURE_DEFAULT_MAX_HEIGHT_MM = 180.0
+FIGURE_PLACEHOLDER_HEIGHT_MM = {"index.png": 140.0, "index_since_2022.png": 140.0, "index_12m.png": 110.0, "components_raw.png": 170.0}
+FIGURE_DEFAULT_PLACEHOLDER_HEIGHT_MM = 140.0
+QUOTE_INDENT_MM = 6.0  # the comment of the authors: indent, border (1/8 pt units, 2 pt), gap and color of their model
+QUOTE_BOX_SIZE = 16
+QUOTE_BOX_SPACE_PT = 10
+QUOTE_BOX_COLOR = "FFC42F"
+DEFAULT_INSTITUTION = "FGVcemif / FGV-EAESP"  # running header of reports that predate \reportinstitution
 # Widths (twips) of the results table by column count: 80/30/40 mm for the general IDC alone and
 # 58/19/26/19/26 mm when the low-income IDC is shown side by side (both fill the 150 mm text width).
 RESULTS_TABLE_WIDTHS = {3: [4535, 1700, 2269], 5: [3300, 1100, 1500, 1100, 1500]}
@@ -85,9 +93,12 @@ def _optional_command_argument(source: str, command: str, start: int = 0) -> tup
 
 
 def _strip_comments(source: str) -> str:
+    """Remove LaTeX comments. A line that holds only a comment disappears, as in TeX: it never splits a paragraph."""
     cleaned: list[str] = []
     for line in source.splitlines():
         match = re.search(r"(?<!\\)%", line)
+        if match and not line[:match.start()].strip():
+            continue
         cleaned.append(line[:match.start()] if match else line)
     return "\n".join(cleaned)
 
@@ -203,11 +214,11 @@ def _validate_annex_pagination(source: str) -> None:
         annex_source,
         re.S,
     ))
-    if len(figures) != 2:
-        raise ValueError("Anexo de figuras must contain exactly two [H] figures")
-    between_figures = annex_source[figures[0].end():figures[1].start()]
-    if re.search(r"\\clearpage", between_figures) is None:
-        raise ValueError("Each annex figure must start on a fresh page using \\clearpage")
+    if len(figures) < 2 or len(figures) != len(re.findall(r"\\begin\{figure\}", annex_source)):
+        raise ValueError("Anexo de figuras must contain at least two figures, all of them [H]")
+    for previous, following in zip(figures, figures[1:]):
+        if re.search(r"\\clearpage", annex_source[previous.end():following.start()]) is None:
+            raise ValueError("Each annex figure must start on a fresh page using \\clearpage")
 
 
 def _validate_public_revision_table(rows: list[list[str]]) -> None:
@@ -362,11 +373,54 @@ def _set_paragraph_body(paragraph, *, first_line: bool = True) -> None:
     fmt.widow_control = True
 
 
-def _add_body_paragraph(document, source: str, *, first_line: bool = True):
+def _add_body_paragraph(document, source: str, *, first_line: bool = True, refs: dict[str, str] | None = None):
     paragraph = document.add_paragraph(style="Normal")
     _set_paragraph_body(paragraph, first_line=first_line)
-    _append_inline(paragraph, source)
+    _append_inline(paragraph, source, refs=refs)
     return paragraph
+
+
+def _add_flow(document, flow: list[tuple[str, object]], bullet_num_id: int, *, refs: dict[str, str] | None = None,
+              after_heading: bool = True) -> None:
+    """Paragraphs, unnumbered subheadings, bullet lists and quotations of a section, in order.
+
+    As in LaTeX, a paragraph that follows a heading has no first-line indent; the others do.
+    """
+    for kind, content in flow:
+        if kind == "heading":
+            paragraph = document.add_paragraph(style="Heading 2")
+            _append_inline(paragraph, str(content), bold=True, refs=refs)  # explicit: plain runs would cancel the style
+            after_heading = True
+            continue
+        if kind == "items":
+            for item in content:
+                paragraph = _add_body_paragraph(document, item, first_line=False, refs=refs)
+                paragraph.paragraph_format.left_indent = Mm(8)
+                paragraph.paragraph_format.first_line_indent = Mm(0)
+                paragraph.paragraph_format.space_before = Pt(3)
+                _apply_numbering(paragraph, bullet_num_id)
+            after_heading = False
+            continue
+        if kind == "quote":
+            # The comment of the authors sits in a box, as in their model of the report (Word only).
+            paragraph = _add_body_paragraph(document, str(content), first_line=False, refs=refs)
+            paragraph.paragraph_format.left_indent = Mm(QUOTE_INDENT_MM)
+            paragraph.paragraph_format.right_indent = Mm(QUOTE_INDENT_MM)
+            paragraph.paragraph_format.space_before = Pt(16)
+            paragraph.paragraph_format.space_after = Pt(20)
+            _set_paragraph_box(paragraph)
+            after_heading = False
+            continue
+        if kind == "table":
+            number = int((refs or {}).get(content["label"], 1))
+            caption = _caption(document, "Tabela", number, content["caption"])
+            caption.paragraph_format.space_before = Pt(6)
+            _add_simple_table(document, content["rows"])
+            _source_note(document, content["source"])
+            after_heading = False
+            continue
+        _add_body_paragraph(document, str(content), first_line=not after_heading, refs=refs)
+        after_heading = False
 
 
 def _add_note_paragraph(document, source: str, *, first_line: bool = True):
@@ -589,6 +643,20 @@ def _configure_styles(document) -> None:
     heading.paragraph_format.keep_with_next = True
     heading.paragraph_format.keep_together = True
 
+    subheading = styles["Heading 2"]
+    subheading.font.name = BODY_FONT
+    subheading.font.size = Pt(10.5)
+    subheading.font.bold = True
+    subheading.font.italic = False
+    subheading.font.color.rgb = BLACK
+    subheading._element.rPr.rFonts.set(qn("w:ascii"), BODY_FONT)
+    subheading._element.rPr.rFonts.set(qn("w:hAnsi"), BODY_FONT)
+    subheading.paragraph_format.space_before = Pt(9)
+    subheading.paragraph_format.space_after = Pt(3)
+    subheading.paragraph_format.line_spacing = Pt(15)
+    subheading.paragraph_format.keep_with_next = True
+    subheading.paragraph_format.keep_together = True
+
     for style_name, size, italic in (
         ("IDC Caption", 10.5, True),
         ("IDC Source", 9.5, True),
@@ -667,7 +735,7 @@ def _restart_page_number(section, start: int) -> None:
     page_number.set(qn("w:start"), str(start))
 
 
-def _configure_content_header_footer(section, title: str) -> None:
+def _configure_content_header_footer(section, title: str, institution: str = DEFAULT_INSTITUTION) -> None:
     section.header.is_linked_to_previous = False
     section.footer.is_linked_to_previous = False
     _clear_container(section.header)
@@ -678,7 +746,7 @@ def _configure_content_header_footer(section, title: str) -> None:
     header.paragraph_format.tab_stops.add_tab_stop(Mm(150), WD_TAB_ALIGNMENT.RIGHT)
     _append_inline(header, title, italic=True)
     header.add_run("\t")
-    _append_inline(header, "FGVcemif / FGV-EAESP", italic=True)
+    _append_inline(header, institution, italic=True)
     _set_paragraph_bottom_border(header, color="BFBFBF", size="4")
     _add_page_field(section.footer.add_paragraph())
 
@@ -733,7 +801,7 @@ def _section_heading(document, title: str, heading_num_id: int, *, numbered: boo
     paragraph = document.add_paragraph(style="Heading 1")
     if numbered:
         _apply_numbering(paragraph, heading_num_id)
-    _append_inline(paragraph, title)
+    _append_inline(paragraph, title, bold=True)  # runs carry an explicit weight, which would cancel the bold style
     return paragraph
 
 
@@ -828,20 +896,73 @@ def _extract_figure(figure_block: str, number: int) -> dict[str, str | int]:
     }
 
 
+def _parse_flow(source: str) -> list[tuple[str, object]]:
+    """Body of a section as a sequence of paragraphs, unnumbered subheadings, bullet lists and quotations."""
+    flow: list[tuple[str, object]] = []
+    token = re.compile(r"\\subsection\*?\s*\{|\\begin\{(itemize|quote|table)\}")
+    cursor = 0
+    while match := token.search(source, cursor):
+        flow += [("paragraph", text) for text in _paragraph_fragments(source[cursor:match.start()])]
+        if match.group(1) is None:
+            title, end = _extract_group(source, match.end() - 1)
+            flow.append(("heading", _collapse_source(title)))
+            cursor = end
+            continue
+        environment = match.group(1)
+        close = source.find(rf"\end{{{environment}}}", match.end())
+        if close == -1:
+            raise ValueError(f"Unclosed {environment} environment in the IDC report")
+        content = source[match.end():close]
+        if environment == "table":
+            block = source[match.start():close + len(r"\end{table}")]
+            caption, rows, table_source = _parse_table(block, expected_columns=(2, 3), table_name="A table of the report")
+            cursor = close + len(r"\end{table}")
+            external = _optional_command_argument(source, "fonte", cursor)
+            if external and not source[cursor:external[1]].strip():
+                table_source, cursor = external[0], external[2]
+            if table_source is None:
+                raise ValueError("A table of the report is missing its source note")
+            label = re.search(r"\\label\{([^}]+)\}", block)
+            flow.append(("table", {"caption": caption, "rows": rows, "source": table_source,
+                                   "label": label.group(1) if label else None}))
+            continue
+        if environment == "itemize":
+            items = [_collapse_source(item) for item in re.split(r"\\item\s+", _strip_comments(content)) if item.strip()]
+            flow.append(("items", items))
+        else:
+            flow += [("quote", text) for text in _paragraph_fragments(content)]
+        cursor = close + len(rf"\end{{{environment}}}")
+    flow += [("paragraph", text) for text in _paragraph_fragments(source[cursor:])]
+    return flow
+
+
+def _cross_references(source: str) -> dict[str, str]:
+    """Number of every table and figure label, in the order of the document."""
+    refs: dict[str, str] = {}
+    for environment in ("table", "figure"):
+        blocks = re.findall(rf"\\begin\{{{environment}\}}.*?\\end\{{{environment}\}}", source, re.S)
+        number = 0
+        for block in blocks:
+            number += 1
+            for label in re.findall(r"\\label\{([^}]+)\}", block):
+                refs[label] = str(number)
+    return refs
+
+
 def _parse_report(source: str) -> dict:
     _validate_notes_typography(source)
     _validate_annex_pagination(source)
     macros = _extract_macros(source)
-    expanded = _expand_macros(source, macros)
+    expanded = _strip_comments(_expand_macros(source, macros))
 
     summary_marker = expanded.find(r"\section{Resumo}")
     results_marker = expanded.find(r"\section{Resultados de", summary_marker)
-    trajectory_marker = expanded.find(r"\section{Trajetória do índice}", results_marker)
+    trajectory_match = re.compile(r"\\section\{Trajetória d[oa]s? índices?\}").search(expanded, max(results_marker, 0))
+    trajectory_marker = trajectory_match.start() if trajectory_match else -1
     revisions_marker = expanded.find(r"\section{Revisões dos dados}", results_marker, trajectory_marker)
-    next_marker = expanded.find(r"\section{Próxima atualização}", trajectory_marker)
-    notes_marker = expanded.find(r"\section*{Notas}", next_marker)
+    notes_marker = expanded.find(r"\section*{Notas}", trajectory_marker)
     annex_marker = expanded.find(r"\section*{Anexo de figuras}", notes_marker)
-    if min(summary_marker, results_marker, trajectory_marker, next_marker, notes_marker, annex_marker) < 0:
+    if min(summary_marker, results_marker, trajectory_marker, notes_marker, annex_marker) < 0:
         raise ValueError("The LaTeX report does not match the IDC section structure")
 
     summary_end = summary_marker + len(r"\section{Resumo}")
@@ -849,7 +970,7 @@ def _parse_report(source: str) -> dict:
     summary = _paragraph_fragments(expanded[summary_end:results_marker])
     results_end = revisions_marker if revisions_marker >= 0 else trajectory_marker
 
-    table_start = expanded.find(r"\begin{table}", results_content_start)
+    table_start = expanded.find(r"\begin{table}", results_content_start, results_end)
     table_end = expanded.find(r"\end{table}", table_start)
     if table_start == -1 or table_end == -1:
         raise ValueError("The IDC results table was not found")
@@ -867,15 +988,9 @@ def _parse_report(source: str) -> dict:
         after_table = external_source[2]
     if table_source is None:
         raise ValueError("The IDC results table is missing its source note")
-
-    item_start = expanded.find(r"\begin{itemize}", after_table, results_end)
-    item_end = expanded.find(r"\end{itemize}", item_start, results_end)
-    if item_start == -1 or item_end == -1:
+    results_flow = _parse_flow(expanded[after_table:results_end])
+    if not any(kind == "items" for kind, _ in results_flow):
         raise ValueError("The IDC component list was not found")
-    results_intro = _paragraph_fragments(expanded[after_table:item_start])
-    item_block = expanded[item_start + len(r"\begin{itemize}"):item_end]
-    items = [_collapse_source(item) for item in re.split(r"\\item\s+", item_block) if item.strip()]
-    results_summary = _paragraph_fragments(expanded[item_end + len(r"\end{itemize}"):results_end])
 
     revisions_title = None
     revisions = []
@@ -917,11 +1032,19 @@ def _parse_report(source: str) -> dict:
             raise ValueError("The IDC revision section requires a comparison table")
         revisions = revisions_intro + revisions_summary
 
-    trajectory_start = trajectory_marker + len(r"\section{Trajetória do índice}")
-    trajectory_intro = _paragraph_fragments(expanded[trajectory_start:next_marker])
+    # Trajectory and any further numbered section (e.g. "Próxima atualização" in reports before 202610).
+    sections = []
+    section_starts = [m.start() for m in re.finditer(r"\\section\{", expanded[trajectory_marker:notes_marker])]
+    for index, offset in enumerate(section_starts):
+        start = trajectory_marker + offset
+        stop = trajectory_marker + section_starts[index + 1] if index + 1 < len(section_starts) else notes_marker
+        title, _, content_start = _command_argument(expanded, "section", start)
+        sections.append({"title": _collapse_source(title), "flow": _parse_flow(expanded[content_start:stop])})
+    if any(kind == "quote" for kind, _ in results_flow) or any(
+        kind == "quote" for section in sections[1:] for kind, _ in section["flow"]
+    ):
+        raise ValueError("The authors' comment (quote) belongs at the end of the trajectory section")
 
-    next_title, _, next_start = _command_argument(expanded, "section", next_marker)
-    next_update = _paragraph_fragments(expanded[next_start:notes_marker])
     notes_start = notes_marker + len(r"\section*{Notas}")
     notes = _paragraph_fragments(expanded[notes_start:annex_marker])
     revision_policy_note_count = sum(
@@ -939,20 +1062,19 @@ def _parse_report(source: str) -> dict:
         expanded[annex_start:document_end],
         re.S,
     ))
-    if len(figure_matches) != 2:
-        raise ValueError(f"Expected two IDC annex figures, found {len(figure_matches)}")
+    if len(figure_matches) < 2:
+        raise ValueError(f"Expected at least two IDC annex figures, found {len(figure_matches)}")
     figures = [_extract_figure(match.group(0), number) for number, match in enumerate(figure_matches, 1)]
 
     return {
         "macros": {name: _expand_macros(value, macros) for name, value in macros.items()},
+        "refs": _cross_references(expanded),
         "summary": summary,
         "results_title": results_title,
         "table_caption": table_caption,
         "table_rows": table_rows,
         "table_source": table_source,
-        "results_intro": results_intro,
-        "items": items,
-        "results_summary": results_summary,
+        "results_flow": results_flow,
         "revisions_title": revisions_title,
         "revisions": revisions,
         "revisions_intro": revisions_intro,
@@ -960,10 +1082,8 @@ def _parse_report(source: str) -> dict:
         "revision_table_caption": revision_table_caption,
         "revision_table_rows": revision_table_rows,
         "revision_table_source": revision_table_source,
-        "trajectory_intro": trajectory_intro,
+        "sections": sections,
         "figures": figures,
-        "next_title": next_title,
-        "next_update": next_update,
         "notes": notes,
         "annex_title": "Anexo de figuras",
     }
@@ -1015,6 +1135,56 @@ def _add_results_table(document, rows: list[list[str]]) -> None:
         header_row._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
 
 
+def _set_paragraph_box(paragraph) -> None:
+    """A box around the paragraph: the borders of the comment of the authors in their model of the report."""
+    properties = paragraph._p.get_or_add_pPr()
+    borders = properties.find(qn("w:pBdr"))
+    if borders is None:
+        borders = OxmlElement("w:pBdr")
+        properties.append(borders)
+    for edge in ("top", "left", "bottom", "right"):
+        element = OxmlElement(f"w:{edge}")
+        element.set(qn("w:val"), "single")
+        element.set(qn("w:sz"), str(QUOTE_BOX_SIZE))
+        element.set(qn("w:space"), str(QUOTE_BOX_SPACE_PT))
+        element.set(qn("w:color"), QUOTE_BOX_COLOR)
+        borders.append(element)
+
+
+def _add_simple_table(document, rows: list[list[str]]) -> None:
+    """A small booktabs-like table (header rule, top and bottom rules), centred on the page as in LaTeX:
+    first column 30 mm, the others 40 mm."""
+    columns = len(rows[0])
+    widths = [1700] + [2268] * (columns - 1)
+    table = document.add_table(rows=len(rows), cols=columns)
+    table.autofit = False
+    _set_table_geometry(table, widths)
+    properties = table._tbl.tblPr
+    indent = properties.first_child_found_in("w:tblInd")
+    if indent is not None:
+        properties.remove(indent)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    for row_index, row in enumerate(rows):
+        for column_index, source in enumerate(row):
+            cell = table.cell(row_index, column_index)
+            paragraph = cell.paragraphs[0]
+            paragraph.paragraph_format.space_before = Pt(0)
+            paragraph.paragraph_format.space_after = Pt(0)
+            paragraph.paragraph_format.line_spacing = 1.0
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if column_index == 0 else WD_ALIGN_PARAGRAPH.RIGHT
+            _append_inline(paragraph, source)
+            for run in paragraph.runs:
+                _set_run_font(run, BODY_FONT, 10.5)
+            border_values: dict[str, dict[str, str]] = {}
+            if row_index == 0:
+                border_values["top"] = {"val": "single", "sz": "8", "color": "000000"}
+                border_values["bottom"] = {"val": "single", "sz": "4", "color": "000000"}
+            if row_index == len(rows) - 1:
+                border_values["bottom"] = {"val": "single", "sz": "8", "color": "000000"}
+            _set_cell_borders(cell, **border_values)
+    table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
+
+
 def _add_revision_table(document, rows: list[list[str]]) -> None:
     if not rows or any(len(row) != 4 for row in rows):
         raise ValueError("The IDC revision table must have exactly 4 columns")
@@ -1050,7 +1220,7 @@ def _add_figure(document, figure: dict, assets_dir: Path) -> None:
     if image_path.exists():
         image = DocxImage.from_file(str(image_path))
         scaled_height_mm = FIGURE_WIDTH_MM * image.px_height / image.px_width
-        maximum_height_mm = FIGURE_MAX_HEIGHT_MM[int(figure["number"])]
+        maximum_height_mm = FIGURE_MAX_HEIGHT_MM.get(image_path.name, FIGURE_DEFAULT_MAX_HEIGHT_MM)
         if scaled_height_mm > maximum_height_mm:
             raise ValueError(
                 f"{image_path.name} would be {scaled_height_mm:.1f} mm tall at full text width; "
@@ -1076,7 +1246,7 @@ def _add_figure(document, figure: dict, assets_dir: Path) -> None:
         placeholder_table.autofit = False
         _set_table_geometry(placeholder_table, [8504])  # 150 mm content width.
         placeholder_row = placeholder_table.rows[0]
-        placeholder_row.height = Mm(FIGURE_PLACEHOLDER_HEIGHT_MM[int(figure["number"])])
+        placeholder_row.height = Mm(FIGURE_PLACEHOLDER_HEIGHT_MM.get(str(figure["image"]), FIGURE_DEFAULT_PLACEHOLDER_HEIGHT_MM))
         placeholder_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
         placeholder_cell = placeholder_table.cell(0, 0)
         placeholder_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
@@ -1133,7 +1303,11 @@ def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = N
     _configure_page(content)
     _restart_page_number(content, 1)
     content.different_first_page_header_footer = True
-    _configure_content_header_footer(content, _collapse_source(macros["reporttitle"]))
+    _configure_content_header_footer(
+        content,
+        _collapse_source(macros["reporttitle"]),
+        _collapse_source(macros.get("reportinstitution", DEFAULT_INSTITUTION)),
+    )
     content.first_page_header.is_linked_to_previous = False
     content.first_page_footer.is_linked_to_previous = False
     _clear_container(content.first_page_header)
@@ -1143,42 +1317,31 @@ def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = N
     _set_paragraph_bottom_border(blank_rule)
     _add_page_field(content.first_page_footer.add_paragraph())
 
+    refs = report["refs"]
     _section_heading(document, "Resumo", heading_num_id)
     for index, paragraph in enumerate(report["summary"]):
-        _add_body_paragraph(document, paragraph, first_line=index > 0)
+        _add_body_paragraph(document, paragraph, first_line=index > 0, refs=refs)
 
     _section_heading(document, report["results_title"], heading_num_id)
     _caption(document, "Tabela", 1, report["table_caption"])
     _add_results_table(document, report["table_rows"])
     _source_note(document, report["table_source"])
-    for paragraph in report["results_intro"]:
-        _add_body_paragraph(document, paragraph)
-    for item in report["items"]:
-        paragraph = _add_body_paragraph(document, item, first_line=False)
-        paragraph.paragraph_format.left_indent = Mm(8)
-        paragraph.paragraph_format.first_line_indent = Mm(0)
-        paragraph.paragraph_format.space_before = Pt(3)
-        _apply_numbering(paragraph, bullet_num_id)
-    for paragraph in report["results_summary"]:
-        _add_body_paragraph(document, paragraph)
+    _add_flow(document, report["results_flow"], bullet_num_id, refs=refs, after_heading=False)
 
     if report["revisions_title"]:
         _section_heading(document, report["revisions_title"], heading_num_id)
         for index, paragraph in enumerate(report["revisions_intro"]):
-            _add_body_paragraph(document, paragraph, first_line=index > 0)
+            _add_body_paragraph(document, paragraph, first_line=index > 0, refs=refs)
         if report["revision_table_rows"]:
-            _caption(document, "Tabela", 2, report["revision_table_caption"])
+            _caption(document, "Tabela", int(refs.get("tab:revisoes-idc", 2)), report["revision_table_caption"])
             _add_revision_table(document, report["revision_table_rows"])
             _source_note(document, report["revision_table_source"])
         for index, paragraph in enumerate(report["revisions_summary"]):
-            _add_body_paragraph(document, paragraph, first_line=index > 0)
+            _add_body_paragraph(document, paragraph, first_line=index > 0, refs=refs)
 
-    _section_heading(document, "Trajetória do índice", heading_num_id)
-    for index, paragraph in enumerate(report["trajectory_intro"]):
-        _add_body_paragraph(document, paragraph, first_line=index > 0)
-    _section_heading(document, report["next_title"], heading_num_id)
-    for index, paragraph in enumerate(report["next_update"]):
-        _add_body_paragraph(document, paragraph, first_line=index > 0)
+    for section in report["sections"]:
+        _section_heading(document, section["title"], heading_num_id)
+        _add_flow(document, section["flow"], bullet_num_id, refs=refs)
     notes_heading = _section_heading(document, "Notas", heading_num_id, numbered=False)
     notes_heading.paragraph_format.space_before = Pt(12)
     notes_heading.paragraph_format.space_after = Pt(4)
@@ -1194,10 +1357,10 @@ def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = N
     # starts on a fresh page, and each chart gets its own full-width page.
     annex = _section_heading(document, report["annex_title"], heading_num_id, numbered=False)
     annex.paragraph_format.page_break_before = True
-    _add_figure(document, report["figures"][0], assets_dir)
-
-    document.add_page_break()
-    _add_figure(document, report["figures"][1], assets_dir)
+    for index, figure in enumerate(report["figures"]):
+        if index:
+            document.add_page_break()
+        _add_figure(document, figure, assets_dir)
 
     settings = document.settings._element
     update_fields = settings.find(qn("w:updateFields"))

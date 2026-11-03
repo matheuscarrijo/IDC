@@ -73,7 +73,7 @@ def s1_escopo(d: DadosApendice) -> str:
 Este apêndice acompanha a Nota Técnica de Atualização do Índice de Desconforto de Crédito (IDC) com divulgação em
 \mespublicacao{{}} (competência \competencia), cujo último mês de referência é \mesreferencia{{}}. Ele reúne, em documento
 separado, as informações estatísticas que sustentam e ampliam a Nota: os dois índices nela apresentados (o IDC
-geral e o IDC para a população de baixa renda), a decomposição das variações de I, Q e C, as decomposições de I e Q por faixa
+Geral e o IDC Baixa Renda), a decomposição das variações de I, Q e C, as decomposições de I e Q por faixa
 de renda, credor, ocupação e unidade da federação, o IDC calculado para as quatro faixas de renda e os testes de qualidade
 dos dados. A Nota é a referência para a leitura dos resultados; este apêndice não os altera nem os substitui.
 
@@ -107,7 +107,7 @@ def s2_indices(d: DadosApendice, tabs: dict) -> str:
     l1, l0 = f.idc["t1"], f.idc["t0"]
     igual = round(l1, 3) == round(f.geral["idc_t1"], 3)
     valores = (f"os dois índices valem {num(l1, 3)}" if igual else
-               f"o IDC para baixa renda vale {num(l1, 3)} e o IDC geral, {num(f.geral['idc_t1'], 3)}")
+               f"o IDC Baixa Renda vale {num(l1, 3)} e o IDC Geral, {num(f.geral['idc_t1'], 3)}")
     frase_alto = (f"A diferença foi maior {_periodo(alto)}, com médias anuais de {num(min(rel['por_ano'][a] for a in alto), 2)} a "
                   f"{num(max(rel['por_ano'][a] for a in alto), 2)} ponto ({T('tab:anual')}), e desde {recente[0]} varia entre "
                   f"{num(min(rel['por_ano'][a] for a in recente), 2, True)} e {num(max(rel['por_ano'][a] for a in recente), 2, True)}. ") if alto else ""
@@ -116,16 +116,16 @@ def s2_indices(d: DadosApendice, tabs: dict) -> str:
 
 \subsection{{Definições}}
 
-O IDC geral é a média simples de três componentes normalizados: o comprometimento de renda das famílias com o serviço da dívida
+O IDC Geral é a média simples de três componentes normalizados: o comprometimento de renda das famílias com o serviço da dívida
 (C, SGS~29034), a inadimplência da carteira de crédito livre de pessoas físicas, com atrasos acima de 90 dias (I, SGS~21112), e a
 participação do crédito oneroso (cheque especial, crédito pessoal não consignado, cartão rotativo e cartão parcelado) no saldo do
 crédito livre PF (Q). Cada componente é normalizado pelo método min-max com janela expansiva desde \seriesinicio, e o índice é
 exibido desde \janelainicio.
 
-O IDC para a população de baixa renda mantém o C nacional e substitui I e Q pelos valores do crédito livre tomado por pessoas físicas
+O IDC Baixa Renda mantém o C nacional e substitui I e Q pelos valores do crédito livre tomado por pessoas físicas
 com renda de até 2 salários mínimos (SM), incluindo as que não têm rendimento, segundo a faixa de renda informada ao Sistema de
 Informações de Crédito (SCR). I e Q desse grupo vêm do SCR.data e são normalizados com janela expansiva desde jul-2012, o primeiro
-mês do SCR.data; o índice é exibido desde {mes(f.inicio)}, 34 meses depois, o mesmo período de aquecimento do IDC geral. O Banco Central
+mês do SCR.data; o índice é exibido desde {mes(f.inicio)}, 34 meses depois, o mesmo período de aquecimento do IDC Geral. O Banco Central
 não divulga o comprometimento de renda por faixa de renda, e por isso os dois índices compartilham C: as diferenças entre eles vêm
 somente de I e Q.
 
@@ -140,13 +140,13 @@ crédito livre do grupo e por {pct(q_ger, 1)} do total. Na escala normalizada, p
 
 \subsection{{Trajetória e comparação}}
 
-A {T('tab:evolucao')} mostra a evolução recente dos dois índices e de seus componentes brutos. Em 12 meses, o IDC geral passou de
-{num(g0, 3)} para {num(g1, 3)} ({_ponto(g1 - g0)}) e o IDC para baixa renda, de {num(l0, 3)} para {num(l1, 3)} ({_ponto(l1 - l0)}); a inadimplência do grupo de baixa renda
+A {T('tab:evolucao')} mostra a evolução recente dos dois índices e de seus componentes brutos. Em 12 meses, o IDC Geral passou de
+{num(g0, 3)} para {num(g1, 3)} ({_ponto(g1 - g0)}) e o IDC Baixa Renda, de {num(l0, 3)} para {num(l1, 3)} ({_ponto(l1 - l0)}); a inadimplência do grupo de baixa renda
 variou {num(f.i['t1'] - f.i['t0'], 2, True)}~p.p., contra {num(i_ger - i_ger0, 2, True)}~p.p. no total.
 
 {tabs['evolucao']}
 
-Entre {mes(f.inicio)} e {mes(t1)}, o IDC para baixa renda ficou acima do geral em {num(100 * rel['share_acima'], 0)}\% dos meses, com diferença média
+Entre {mes(f.inicio)} e {mes(t1)}, o IDC Baixa Renda ficou acima do geral em {num(100 * rel['share_acima'], 0)}\% dos meses, com diferença média
 de {num(rel['media_dif'], 3)} ponto e correlação de {num(rel['corr_nivel'], 2)} nos níveis e de {num(rel['corr_d12'], 2)} nas variações de 12 meses.
 {frase_alto}As diferenças anteriores a 2019 devem ser lidas com cautela, porque o SCR registra mudanças bruscas na classificação por faixa
 de renda em nov-2018 e mar-2019 ({S('sec:qualidade')}). As {Fs('fig:indice', 'fig:componentes')} mostram as séries.
@@ -259,7 +259,7 @@ def s4_segmentos(d: DadosApendice, tabs: dict) -> str:
 As tabelas desta seção usam o SCR.data, que o Banco Central divulga cerca de um mês depois do fechamento e reprocessa continuamente ({S('sec:qualidade')}). O universo
 é o crédito livre de pessoas físicas, sem financiamento rural, imobiliário e de exportação ou importação. Cada tabela decompõe a variação de I e a de Q em 12 meses
 em contribuições de cada segmento, somando o efeito da variação da taxa do segmento (\emph{{dentro}}) e o da mudança de seu peso na carteira (\emph{{composição}}).
-As contribuições somam as variações calculadas no SCR.data, que podem diferir das variações dos componentes do IDC geral, calculadas com séries do SGS. As tabelas apresentam ambas
+As contribuições somam as variações calculadas no SCR.data, que podem diferir das variações dos componentes do IDC Geral, calculadas com séries do SGS. As tabelas apresentam ambas
 para facilitar a comparação.
 
 \subsection{{Faixa de renda}}
@@ -338,7 +338,7 @@ def s5_faixas(d: DadosApendice, tabs: dict) -> str:
     return rf"""
 \section{{IDC por faixa de renda}}\label{{sec:faixas}}
 
-A {T('tab:idc_faixa')} traz o IDC das quatro faixas de renda; a primeira, até 2~SM e incluindo os sem rendimento, é o IDC para baixa renda da Nota. A construção é a mesma para todas:
+A {T('tab:idc_faixa')} traz o IDC das quatro faixas de renda; a primeira, até 2~SM e incluindo os sem rendimento, é o IDC Baixa Renda da Nota. A construção é a mesma para todas:
 C nacional e I e Q de cada faixa, normalizados com janela expansiva desde jul-2012. Em {mes(t1)}, o índice vale, por faixa, {itens}. Em 12 meses, o índice subiu {sobe},
 e a maior alta foi na faixa {FAIXA_TEXTO[maior]} ({num(var[maior], 3, True)} ponto). A {F('fig:idc_faixa')} mostra as séries desde {mes(d.f.inicio)}.
 
@@ -431,7 +431,7 @@ def s6_qualidade(d: DadosApendice, tabs: dict) -> str:
 
 \subsection{{Mudanças abruptas de peso}}
 
-A {T('tab:quebras')} lista as mudanças de peso superiores a 2~p.p. em um único mês, que exigem cautela nas comparações que as atravessem e podem refletir alterações na composição da carteira ou em seu registro. Para o IDC para baixa renda, importam as da faixa de
+A {T('tab:quebras')} lista as mudanças de peso superiores a 2~p.p. em um único mês, que exigem cautela nas comparações que as atravessem e podem refletir alterações na composição da carteira ou em seu registro. Para o IDC Baixa Renda, importam as da faixa de
 renda até 2~SM: {lista_altas} (tratadas adiante){lista_quedas}.{frase_queda} As tabelas por segmento sinalizam as mudanças de mais de 1~p.p. que caem na janela de 12 meses.
 
 {contexto_limite}
@@ -450,7 +450,7 @@ Q também sobe: em {js['q_pos_grupo']} dos {js['n']} anos no grupo e em {js['q_p
 
 {tabs['janeiros']}
 
-Para medir o efeito desses saltos sobre o IDC para baixa renda, a {T('tab:cenarios')} substitui, nos meses de salto, as variações de I e de Q do grupo pelas da série geral e recalcula o índice. Em {mes(t1)}, a variação é de
+Para medir o efeito desses saltos sobre o IDC Baixa Renda, a {T('tab:cenarios')} substitui, nos meses de salto, as variações de I e de Q do grupo pelas da série geral e recalcula o índice. Em {mes(t1)}, a variação é de
 {num(cen.loc['janeiros', 'var_t1'], 3, True)} ponto sem os saltos de janeiro, {num(cen.loc['fora_jan', 'var_t1'], 3, True)} sem as mudanças de peso de {_meses(fora)} e {num(cen.loc['ambos', 'var_t1'], 3, True)} sem ambos; no período exibido, a diferença absoluta máxima é de
 {num(cen.loc['ambos', 'max_abs'], 3)} ({mes(cen.loc['ambos', 'mes_max'])}), e a média, de {num(cen.loc['ambos', 'media_abs'], 3)}. Os efeitos não são aditivos, porque a normalização usa os extremos históricos. Em {mes(t1)}, I do grupo ({pct(d.f.i['t1'], 2)}) supera em {num(margem, 2)}~p.p. o máximo registrado até {mes(d.t0 - pd.DateOffset(months=1))}
 ({pct(i_prev_max, 2)}, em {mes(mes_prev_max)}){frase_desloc}, deslocamentos de nível desse tamanho alteram o valor normalizado de I. A tabela é, portanto, um teste de sensibilidade, e não uma série corrigida.
@@ -498,8 +498,8 @@ Os índices usam a normalização min-max com janela expansiva,
 \[
 x^{{norm}}_t \;=\; \frac{{x_t-\min_{{\tau\le t}}x_\tau}}{{\max_{{\tau\le t}}x_\tau-\min_{{\tau\le t}}x_\tau}},
 \]
-que usa apenas informação até o mês $t$. No IDC geral, a janela começa em mar-2011 e o índice é
-exibido desde jan-2014 (34 meses de aquecimento). I e Q das faixas de renda começam em jul-2012, primeiro mês do SCR.data, e são exibidos desde {mes(d.f.inicio)}, com o mesmo aquecimento; C é o do IDC geral. O IDC por faixa é a média
+que usa apenas informação até o mês $t$. No IDC Geral, a janela começa em mar-2011 e o índice é
+exibido desde jan-2014 (34 meses de aquecimento). I e Q das faixas de renda começam em jul-2012, primeiro mês do SCR.data, e são exibidos desde {mes(d.f.inicio)}, com o mesmo aquecimento; C é o do IDC Geral. O IDC por faixa é a média
 de C, I e Q normalizados.
 
 \subsection{{Sinalização de mudanças de peso}}

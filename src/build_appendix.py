@@ -40,6 +40,7 @@ CRI_CSV = Path("data/external/cri_faixa_ref202504.csv")
 LUALATEX_FALLBACK = "/Library/TeX/texbin/lualatex"
 MACROS = ("reporttitle", "mesreferencia", "mesref", "competencia", "mespublicacao", "janelainicio", "seriesinicio",
           "reportdate", "authorone", "authortwo", "authorthree")
+INSTITUICAO_PADRAO = "FGVcemif / FGV-EAESP"
 SHARED_FIGURES = ("index.png",)  # figure of the monthly report, with the low-income line
 
 
@@ -130,7 +131,9 @@ def document(d: DadosApendice, report_tex: str, draft: bool = False) -> str:
     if macros["mesref"] != mes(d.t1):
         raise ValueError(f"o relatório mensal trata de {macros['mesref']}, mas o IDC termina em {mes(d.t1)}")
     definitions = "\n".join(rf"\newcommand{{\{name}}}{{{macros[name]}}}" for name in MACROS)
-    subtitle = r"Apêndice Estatístico --- Divulgação \mespublicacao; competência \mesreferencia"
+    # Institution of the running header (reports before 202610 do not define it).
+    definitions += "\n" + rf"\newcommand{{\reportinstitution}}{{{macros.get('reportinstitution', INSTITUICAO_PADRAO)}}}"
+    subtitle = r"Apêndice Estatístico --- divulgação em \mespublicacao; competência \mesreferencia"
     if draft:
         subtitle += r"\\[2pt]\normalsize\textit{Versão para discussão}"
     start = rf"""% =============================================================================

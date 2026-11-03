@@ -38,14 +38,14 @@ O valor **0,966** indica que, em ago-2026, o desconforto de crédito permaneceu 
 | Máximo | 1,000 |
 <!-- IDC_STATS_END -->
 
-### IDC para a população de baixa renda
+### IDC Baixa Renda
 
-O **IDC para baixa renda** aplica a mesma construção a tomadores pessoa física com renda de até 2 salários mínimos, incluindo os sem rendimento. O componente C é o do IDC geral, porque o Banco Central não divulga o comprometimento de renda por faixa de renda; I e Q são calculados para o grupo com o SCR.data, normalizados desde jul-2012 e exibidos a partir de mai-2015.
+O **IDC Baixa Renda** aplica a mesma construção a tomadores pessoa física com renda de até 2 salários mínimos, incluindo os sem rendimento. O componente C é o do IDC Geral, porque o Banco Central não divulga o comprometimento de renda por faixa de renda; I e Q são calculados para o grupo com o SCR.data, normalizados desde jul-2012 e exibidos a partir de mai-2015.
 
 <!-- IDC_LOW_INCOME_START -->
 | Indicador | Valor bruto | Valor normalizado |
 |---|---:|---:|
-| IDC baixa renda | — | **0,974** |
+| IDC Baixa Renda | — | **0,974** |
 | C — comprometimento de renda (nacional) | — | 1,000 |
 | I — inadimplência 90+ dias (até 2 SM) | 10,8% | 1,000 |
 | Q — crédito oneroso (até 2 SM) | 26,9% | 0,921 |
@@ -151,18 +151,18 @@ onde:
 - $I_t$: inadimplência (normalizada)
 - $Q_t$: participação do crédito oneroso (normalizada)
 
-### 3.3. IDC para a população de baixa renda
+### 3.3. IDC Baixa Renda
 
-Além do IDC geral, o projeto calcula o **IDC para baixa renda**: o mesmo índice, aplicado a tomadores pessoa física com renda de até 2 salários mínimos, **incluindo os sem rendimento**, segundo a faixa de renda informada ao Sistema de Informações de Crédito (SCR).
+Além do IDC Geral, o projeto calcula o **IDC Baixa Renda**: o mesmo índice, aplicado a tomadores pessoa física com renda de até 2 salários mínimos, **incluindo os sem rendimento**, segundo a faixa de renda informada ao Sistema de Informações de Crédito (SCR).
 
 $$
-\text{IDC baixa renda}_t = \frac{1}{3} \left( C_t + I_t^{\text{baixa renda}} + Q_t^{\text{baixa renda}} \right)
+\text{IDC Baixa Renda}_t = \frac{1}{3} \left( C_t + I_t^{\text{baixa renda}} + Q_t^{\text{baixa renda}} \right)
 $$
 
-- **C é o do IDC geral**, porque o Banco Central não divulga o comprometimento de renda por faixa de renda. As diferenças entre os dois índices vêm, portanto, só de I e Q. Em teste com o comprometimento de renda individual por faixa publicado no Relatório de Estabilidade Financeira de abril de 2025 (dez-2020 a dez-2024), o C nacional acompanha parte da dinâmica de cada faixa, mas não o nível: ele é uma aproximação.
-- **I e Q do grupo** vêm do [SCR.data](https://dadosabertos.bcb.gov.br/dataset/scr_data), os dados agregados do SCR (crédito livre de pessoas físicas, exceto financiamento rural, imobiliário e de exportação ou importação; `src/scr_data.py`). I é a inadimplência acima de 90 dias e Q, a participação das mesmas quatro modalidades onerosas do IDC geral.
-- **Normalização:** min-max com janela expansiva desde **jul-2012**, o primeiro mês do SCR.data. O índice é exibido a partir de **mai-2015**, 34 meses depois, o mesmo período de aquecimento do IDC geral.
-- **Qualidade dos dados:** o SCR.data é reconciliado todo mês com as séries oficiais (I e Q nacionais). Se o SCR.data não cobrir o mês de referência do IDC ou divergir das séries oficiais em mais de 0,75 ponto percentual, o IDC para baixa renda **não é atualizado naquela edição** (`data/processed/low_income_status.json` registra o motivo) e o IDC geral segue normalmente, pois não depende dessa fonte.
+- **C é o do IDC Geral**, porque o Banco Central não divulga o comprometimento de renda por faixa de renda. As diferenças entre os dois índices vêm, portanto, só de I e Q. Em teste com o comprometimento de renda individual por faixa publicado no Relatório de Estabilidade Financeira de abril de 2025 (dez-2020 a dez-2024), o C nacional acompanha parte da dinâmica de cada faixa, mas não o nível: ele é uma aproximação.
+- **I e Q do grupo** vêm do [SCR.data](https://dadosabertos.bcb.gov.br/dataset/scr_data), os dados agregados do SCR (crédito livre de pessoas físicas, exceto financiamento rural, imobiliário e de exportação ou importação; `src/scr_data.py`). I é a inadimplência acima de 90 dias e Q, a participação das mesmas quatro modalidades onerosas do IDC Geral.
+- **Normalização:** min-max com janela expansiva desde **jul-2012**, o primeiro mês do SCR.data. O índice é exibido a partir de **mai-2015**, 34 meses depois, o mesmo período de aquecimento do IDC Geral.
+- **Qualidade dos dados:** o SCR.data é reconciliado todo mês com as séries oficiais (I e Q nacionais). Se o SCR.data não cobrir o mês de referência do IDC ou divergir das séries oficiais em mais de 0,75 ponto percentual, o IDC Baixa Renda **não é atualizado naquela edição** (`data/processed/low_income_status.json` registra o motivo) e o IDC Geral segue normalmente, pois não depende dessa fonte.
 
 ### 3.4. Apêndice estatístico
 
@@ -212,22 +212,24 @@ python -m src.compare_releases 202610
 python main.py
 ```
 
-O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, constrói os três componentes e o índice (normalização min-max com janela expansiva), calcula o IDC para baixa renda quando o SCR.data está disponível, salva os CSVs em `data/processed/` e as figuras em `outputs/figures/`. O relatório final do projeto fica em `outputs/report/`.
+O script carrega automaticamente a planilha mais recente em `data/raw/YYYYMM/`, constrói os três componentes e o índice (normalização min-max com janela expansiva), calcula o IDC Baixa Renda quando o SCR.data está disponível, salva os CSVs em `data/processed/` e as figuras em `outputs/figures/`. O relatório final do projeto fica em `outputs/report/`.
 
-**Dados do SCR.data** (IDC para baixa renda e apêndice), antes de `python main.py`:
+**Dados do SCR.data** (IDC Baixa Renda e apêndice), antes de `python main.py`:
 
 ```bash
 python -m src.scr_data refresh   # baixa só os ZIPs anuais que mudaram (a primeira vez baixa tudo, cerca de 1,3 GB)
 ```
 
-**Relatório e apêndice** de uma divulgação, depois de preencher o LaTeX da nota (ver [`PIPELINE.md`](PIPELINE.md)):
+**Relatório e apêndice** de uma divulgação, depois de `python main.py` (ver [`PIPELINE.md`](PIPELINE.md)):
 
 ```bash
-python -m src.insert_low_income 202610   # insere o IDC para baixa renda no .tex preenchido da nota
-python -m src.build_appendix 202610      # gera o PDF e o Word editável do apêndice estatístico
+python -m src.fill_report 202610      # preenche o .tex da nota a partir do template local e dos dados processados
+python -m src.build_appendix 202610   # gera o PDF e o Word editável do apêndice estatístico
 ```
 
-Cada nota mensal e seu apêndice estatístico são gerados localmente em três formatos com o mesmo conteúdo: fonte LaTeX (`.tex`), PDF compilado (`.pdf`) e documento Word editável (`.docx`). Somente os PDFs finais são versionados e publicados no GitHub. Fontes, arquivos auxiliares de construção, DOCX, imagens copiadas para o relatório, auditorias de revisão e templates permanecem locais e são ignorados pelo Git. O comando do apêndice gera seu DOCX automaticamente a partir da mesma fonte; `--no-pdf` gera o `.tex` e o `.docx` sem compilar o PDF. Depois de preencher e revisar o LaTeX da nota, gere seu DOCX diretamente da mesma fonte para evitar versões divergentes:
+Todo o texto da nota que muda de mês a mês (valores, variações, recordes, posição histórica, tabela, legendas) é gerado a partir dos dados por regras fixas, iguais em todas as edições. Análises de conjuntura e juízos de valor não são automatizados: um comentário dos autores sobre uma edição específica (por exemplo, sobre uma política pública) só entra quando eles o enviam, como citação recuada no fim da seção `Trajetória dos índices`.
+
+Cada nota mensal e seu apêndice estatístico são gerados localmente em três formatos com o mesmo conteúdo: fonte LaTeX (`.tex`), PDF compilado (`.pdf`) e documento Word editável (`.docx`). Somente os PDFs finais são versionados e publicados no GitHub. Fontes, arquivos auxiliares de construção, DOCX, imagens copiadas para o relatório, auditorias de revisão e templates permanecem locais e são ignorados pelo Git. O comando do apêndice gera seu DOCX automaticamente a partir da mesma fonte; `--no-pdf` gera o `.tex` e o `.docx` sem compilar o PDF. Depois de revisar e compilar o LaTeX da nota, gere seu DOCX diretamente da mesma fonte para evitar versões divergentes:
 
 Para gerar o Word do apêndice, instale também o executável `pandoc` e deixe-o no `PATH`: ele converte as fórmulas em equações editáveis do Word.
 
@@ -260,8 +262,8 @@ Para gerar relatórios em uma nova cópia do repositório, disponibilize localme
 │       ├── series_raw.csv
 │       ├── components_raw.csv
 │       ├── index.csv
-│       ├── low_income_idc.csv        # IDC para baixa renda (jul-2012 em diante; exibido desde mai-2015)
-│       ├── low_income_status.json    # situação do IDC para baixa renda na última rodada
+│       ├── low_income_idc.csv        # IDC Baixa Renda (jul-2012 em diante; exibido desde mai-2015)
+│       ├── low_income_status.json    # situação do IDC Baixa Renda na última rodada
 │       ├── sgs_snapshot.csv          # séries do SGS usadas no apêndice
 │       └── scr/                      # agregados do SCR.data (4 lentes) e datas de geração dos arquivos
 ├── src/
@@ -272,17 +274,19 @@ Para gerar relatórios em uma nova cópia do repositório, disponibilize localme
 │   ├── normalize.py     # normalização min-max com janela expansiva
 │   ├── build_index.py   # constrói componentes C, I, Q e agrega o índice
 │   ├── plot.py          # gera as figuras (com as linhas de baixa renda quando disponíveis)
-│   ├── plot_overlay.py  # linhas do IDC para baixa renda sobre as figuras
+│   ├── plot_overlay.py  # linhas do IDC Baixa Renda sobre as figuras
+│   ├── plot_recent.py   # figura dos últimos 12 meses, com o valor de cada mês
 │   ├── scr_data.py      # baixa, valida e agrega o SCR.data (atualização incremental)
 │   ├── sgs_api.py       # cliente da API do SGS (séries do apêndice)
 │   ├── lenses.py, anatomy.py, income_idc.py, ref_check.py  # decomposições, IDC por faixa e teste do C nacional
-│   ├── low_income.py    # série e textos do IDC para baixa renda; portão de qualidade
-│   ├── insert_low_income.py  # insere o IDC para baixa renda no .tex preenchido da nota
+│   ├── low_income.py    # série do IDC Baixa Renda; portão de qualidade
+│   ├── report_text.py   # texto da nota mensal gerado a partir dos dados
+│   ├── fill_report.py   # preenche o .tex da nota a partir do template e dos dados
 │   ├── exhibits.py, extras.py, plot_extras.py, pt_format.py, workbook_tables.py  # tabelas, textos e figuras
 │   ├── appendix_data.py, appendix_text.py, appendix_document.py  # dados, texto e montagem do apêndice
 │   └── build_appendix.py # gera o PDF e o Word editável do apêndice estatístico
 ├── outputs/
-│   ├── figures/         # 6 figuras (PNG)
+│   ├── figures/         # 8 figuras (PNG)
 │   └── report/          # PDFs finais versionados; templates e auxiliares locais
 ├── main.py              # ponto de entrada
 ├── CITATION.cff         # autoria e citação recomendada
@@ -296,11 +300,15 @@ Para gerar relatórios em uma nova cópia do repositório, disponibilize localme
 
 **Dados (`data/processed/`):**
 
+As séries mostradas no relatório estão reunidas em **`idc_data.xlsx`**, aba "Séries do relatório". O guia curto de todos os arquivos de dados está em [`data/README.md`](data/README.md).
+
+- **`idc_data.xlsx`** — planilha consolidada: séries do relatório, notas, IDC e normalizados, componentes brutos e IDC Baixa Renda
+
 - **`series_raw.csv`** — séries brutas carregadas do Excel
 - **`components_raw.csv`** — componentes C, I, Q antes da normalização
 - **`index.csv`** — componentes normalizados (C_norm, I_norm, Q_norm) e índice agregado (a partir de jan-2014)
-- **`low_income_idc.csv`** — IDC para baixa renda: I e Q do grupo (em %), seus valores normalizados, C normalizado e o índice (a série é calculada desde jul-2012 e exibida a partir de mai-2015)
-- **`low_income_status.json`** — situação do IDC para baixa renda na última rodada (`ok`, `bloqueio`, `sem_cobertura` ou `sem_dados`), o motivo e os números da conciliação com as séries oficiais
+- **`low_income_idc.csv`** — IDC Baixa Renda: I e Q do grupo (em %), seus valores normalizados, C normalizado e o índice (a série é calculada desde jul-2012 e exibida a partir de mai-2015)
+- **`low_income_status.json`** — situação do IDC Baixa Renda na última rodada (`ok`, `bloqueio`, `sem_cobertura` ou `sem_dados`), o motivo e os números da conciliação com as séries oficiais
 - **`scr/`** — agregados mensais do SCR.data por faixa de renda, credor, ocupação e unidade da federação, e as datas de geração dos arquivos do Banco Central
 - **`sgs_snapshot.csv`** — séries do SGS usadas no apêndice (saldos e inadimplência por modalidade e partes do comprometimento de renda)
 
@@ -313,9 +321,11 @@ Para gerar relatórios em uma nova cópia do repositório, disponibilize localme
 | `components_raw_i.png` | Componente I em valores brutos |
 | `components_raw_q.png` | Componente Q em valores brutos |
 | `components_normalized.png` | Componentes normalizados por Min-Max sobrepostos |
-| `index.png` | Índice de Desconforto de Crédito (com o IDC para baixa renda, quando disponível) |
+| `index.png` | Índice de Desconforto de Crédito (com o IDC Baixa Renda, quando disponível) |
+| `index_since_2022.png` | O índice a partir de dez-2022, com o Programa Desenrola e o Novo Desenrola, escala vertical ajustada ao período e os valores dos pontos de leitura mais difícil |
+| `index_12m.png` | IDC Geral e IDC Baixa Renda nos últimos 12 meses, com o valor de cada mês |
 
-As figuras de I, de Q, dos componentes normalizados e do índice mostram também as linhas do grupo de baixa renda (tracejadas nos componentes) quando o IDC para baixa renda está disponível.
+As figuras de I, de Q, dos componentes normalizados, do índice (completa e desde dez-2022) e dos últimos 12 meses mostram também as linhas do grupo de baixa renda (tracejadas nos componentes) quando o IDC Baixa Renda está disponível.
 
 **Relatório (`outputs/report/`):**
 
@@ -344,7 +354,7 @@ python -m src.download_bcb_release YYYYMM
 - Reúne, em uma única planilha, as principais séries necessárias para o índice.
 - As observações mais recentes são marcadas com `*` na planilha, indicando **dados preliminares** sujeitos a revisão. Essas observações são incluídas no índice sem tratamento especial.
 
-**SCR.data (IDC para baixa renda e apêndice).** Os dados agregados do Sistema de Informações de Crédito (SCR) são divulgados pelo Banco Central em um arquivo ZIP por ano, com um CSV por mês, a partir de jul-2012 e com defasagem de cerca de 38 dias ([dados abertos do BCB](https://dadosabertos.bcb.gov.br/dataset/scr_data)). O Banco Central **reprocessa os arquivos continuamente**, de modo que valores de um mesmo mês podem mudar entre uma edição e outra; `src.scr_data` guarda a data de geração de cada arquivo em `data/processed/scr/scr_vintage.csv` e baixa de novo apenas os anos cujo ZIP mudou. A licença do SCR.data é a Open Database License (ODbL): ver a seção 10.
+**SCR.data (IDC Baixa Renda e apêndice).** Os dados agregados do Sistema de Informações de Crédito (SCR) são divulgados pelo Banco Central em um arquivo ZIP por ano, com um CSV por mês, a partir de jul-2012 e com defasagem de cerca de 38 dias ([dados abertos do BCB](https://dadosabertos.bcb.gov.br/dataset/scr_data)). O Banco Central **reprocessa os arquivos continuamente**, de modo que valores de um mesmo mês podem mudar entre uma edição e outra; `src.scr_data` guarda a data de geração de cada arquivo em `data/processed/scr/scr_vintage.csv` e baixa de novo apenas os anos cujo ZIP mudou. A licença do SCR.data é a Open Database License (ODbL): ver a seção 10.
 
 **Identificação das séries dentro da planilha:** em cada aba, uma linha de cabeçalho `SGS` contém o número identificador de cada série no sistema SGS/BCB. A posição dessa linha pode variar entre divulgações; o carregador localiza dinamicamente esse cabeçalho antes de ler as observações.
 

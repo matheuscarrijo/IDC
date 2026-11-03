@@ -59,11 +59,18 @@ class BuildReportDocxTests(unittest.TestCase):
         report = _parse_report(TEMPLATE_TEX.read_text(encoding="utf-8"))
 
         self.assertEqual(report["results_title"], r"Resultados de \placeholder{mês por extenso de ano}")
-        self.assertEqual(len(report["table_rows"]), 5)
-        self.assertEqual(report["table_rows"][0], ["Indicador", "Valor bruto", "Valor normalizado"])
+        self.assertEqual(len(report["table_rows"]), 6)
+        self.assertEqual(report["table_rows"][0], ["", "IDC Geral", SPAN, "IDC Baixa Renda", SPAN])
         self.assertIsNone(report["revisions_title"])
         self.assertEqual(report["revisions"], [])
-        self.assertEqual([figure["image"] for figure in report["figures"]], ["index.png", "components_raw.png"])
+        self.assertEqual([kind for kind, _ in report["results_flow"]], ["heading", "items", "heading", "items", "paragraph"])
+        self.assertEqual([section["title"] for section in report["sections"]], ["Trajetória dos índices"])
+        self.assertEqual(
+            [figure["image"] for figure in report["figures"]],
+            ["index.png", "index_since_2022.png", "index_12m.png", "components_raw.png"],
+        )
+        self.assertEqual(report["refs"], {"tab:componentes": "1", "fig:indice": "1", "fig:periodo": "2", "fig:recente": "3", "fig:componentes": "4"})
+        self.assertEqual(report["macros"]["reportinstitution"], "FGVcemif")
 
     @requires_local_files(TEMPLATE_TEX)
     def test_latex_annex_and_each_figure_start_on_a_fresh_page(self):
@@ -100,7 +107,7 @@ class BuildReportDocxTests(unittest.TestCase):
             ),
             (
                 source.replace(r"\begin{figure}[H]", r"\begin{figure}[htbp]", 1),
-                "exactly two \\[H\\] figures",
+                "all of them \\[H\\]",
             ),
         )
 
@@ -248,12 +255,16 @@ class BuildReportDocxTests(unittest.TestCase):
             self.assertEqual(len(document.sections), 2)
             self.assertAlmostEqual(document.sections[0].page_width.mm, 210, places=1)
             self.assertAlmostEqual(document.sections[0].page_height.mm, 297, places=1)
-            # One data table plus two editable chart-placeholder boxes.
-            self.assertEqual(len(document.tables), 3)
-            self.assertIn("Indicador", document.tables[0].cell(0, 0).text)
+            # One data table plus four editable chart-placeholder boxes.
+            self.assertEqual(len(document.tables), 5)
+            self.assertIn("Indicador", document.tables[0].cell(1, 0).text)
             visible_text = "\n".join(paragraph.text for paragraph in document.paragraphs)
             self.assertIn("Índice de Desconforto de Crédito", visible_text)
-            self.assertIn("Trajetória do índice", visible_text)
+            self.assertIn("Trajetória dos índices", visible_text)
+            subheadings = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
+            self.assertEqual(subheadings, ["IDC Geral — Componentes", "IDC Baixa Renda — Componentes"])
+            header = document.sections[1].header.paragraphs[0].text
+            self.assertEqual(header, "Índice de Desconforto de Crédito (IDC)\tFGVcemif")
             self.assertGreaterEqual(document.styles["IDC Notes"].font.size.pt, 9.0)
             self.assertAlmostEqual(document.styles["IDC Notes"].font.size.pt, 9.5)
             self.assertAlmostEqual(
@@ -350,7 +361,7 @@ class BuildReportDocxTests(unittest.TestCase):
                 if style is not None and style.get(f"{W}val") == "Heading1" and num_id is not None:
                     numbered_headings.append(num_id.get(f"{W}val"))
 
-            self.assertEqual(len(numbered_headings), 4)
+            self.assertEqual(len(numbered_headings), 3)  # Resumo, Resultados, Trajetória dos índices
             for num_id in numbered_headings:
                 abstract = abstract_by_id[abstract_id_by_num[num_id]]
                 self.assertEqual(abstract.find(f"{W}lvl/{W}numFmt").get(f"{W}val"), "decimal")

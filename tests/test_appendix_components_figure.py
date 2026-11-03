@@ -15,20 +15,28 @@ from src.build_appendix_docx import build_docx
 
 
 class ComponentsFigureTests(unittest.TestCase):
-    def test_overlay_keeps_both_lines_when_the_caption_replaces_the_legend(self):
-        dates = pd.date_range("2024-01-01", periods=3, freq="MS")
-        low = pd.DataFrame({"I": [7, 8, 9], "Q": [20, 21, 22]}, index=dates)
+    def test_the_panels_keep_both_lines_and_the_note_is_optional(self):
+        import numpy as np
+
+        from src import plot
+
+        plot._apply_excel_style()
+        dates = pd.date_range("2011-03-01", "2026-08-01", freq="MS")
+        wave = np.sin(np.linspace(0, 12, len(dates)))
+        components = pd.DataFrame({"C": 25 + 2 * wave, "I": 6 + wave, "Q": 0.22 + 0.02 * wave}, index=dates)
+        low = pd.DataFrame({"I": 9 + wave, "Q": 24 + 2 * wave}, index=dates).loc["2012-07":]
         for legend in (True, False):
             with self.subTest(legend=legend):
                 fig, axes = plt.subplots(3)
                 self.addCleanup(plt.close, fig)
-                for ax in axes:
-                    ax.plot(dates, [5, 6, 7])
-                plot_overlay.components_raw(fig, low, legend=legend)
+                for ax, (comp, series) in zip(axes, (("C", components["C"]), ("I", components["I"]), ("Q", 100 * components["Q"]))):
+                    plot._plot_raw_component_panel(ax, comp, series, "%", low=low[comp] if comp in low else None)
+                if legend:
+                    plot_overlay.components_legend(fig)
                 self.assertEqual(len(fig.legends), int(legend))
                 for ax, column in zip(axes[1:], ("I", "Q")):
-                    self.assertEqual(ax.lines[1].get_linestyle(), "--")
-                    self.assertEqual(list(ax.lines[1].get_ydata()), list(low[column]))
+                    dashed = [line for line in ax.lines if line.get_linestyle() == "--" and len(line.get_ydata()) > 2]  # not the event lines
+                    self.assertEqual([list(line.get_ydata()) for line in dashed], [list(low[column])])
 
     def test_caption_is_shared_by_latex_and_editable_word(self):
         data = SimpleNamespace(t1=pd.Timestamp("2026-08-01"), f=SimpleNamespace(inicio=pd.Timestamp("2015-05-01")))

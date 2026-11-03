@@ -1,13 +1,13 @@
-"""IDC for the low-income population: series, quality gate and the blocks of the monthly report.
+"""IDC Baixa Renda (low-income population): series, quality gate, and the facts and table of the appendix.
 
 The low-income group is the set of PF borrowers with income of up to 2 minimum wages, including those with no
 income, according to the income class reported to the SCR.  Its IDC keeps the national C of the IDC and uses I
 and Q computed for the group with the SCR.data (``src.income_idc``).
 
 ``calcular`` builds the series and applies the quality gate (the SCR.data must cover the reference month and
-reconcile with the official series); ``gravar`` stores the series and the status in ``data/processed/``; the
-remaining functions produce the facts, the paragraphs and the table that ``src.insert_low_income`` writes into
-the monthly report.  The general IDC never depends on any of this.
+reconcile with the official series); ``gravar`` stores the series and the status in ``data/processed/``;
+``fatos`` and ``tabela_componentes`` serve the statistical appendix.  The text of the monthly report is generated
+by ``src.report_text``.  The IDC Geral never depends on any of this.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ import pandas as pd
 
 from src import lenses as L
 from src.income_idc import JANELA_INICIO, c_normalizado, idc_baixa_renda, indice_por_faixa, primeira_exibicao
-from src.pt_format import b, bmes, bn, bpct, bpp, mes, num, pct
+from src.pt_format import mes, num, pct
 
 SCR_DIR = Path("data/processed/scr")
 SERIES_CSV = Path("data/processed/low_income_idc.csv")
@@ -165,121 +165,7 @@ def fatos(low: pd.DataFrame, idc_geral: pd.Series, comp: pd.DataFrame, idx: pd.D
     return f
 
 
-def bponto(x: float, nd: int = 3) -> str:
-    """Bold magnitude of an index change, e.g. \\textbf{0,013~ponto}."""
-    return b(num(abs(x), nd) + "~ponto")
-
-
-def _verbo(delta: float, subiu="subiu", caiu="recuou", igual="ficou estável") -> str:
-    if abs(delta) < 0.0005:
-        return igual
-    return subiu if delta > 0 else caiu
-
-
-NOTA_ARREDONDAMENTO = "com base nos valores não arredondados"
-
-
-def _inconsistente(t0: float, t1: float, nd: int) -> bool:
-    """True when the difference of the printed levels is not the printed change (both rounded to ``nd`` places)."""
-    return abs((round(t1, nd) - round(t0, nd)) - round(t1 - t0, nd)) >= 0.5 * 10 ** -nd
-
-
-def _posicao(grupo: float, total: float) -> tuple[str, str]:
-    """Conjunction and phrase comparing the normalised position of the group's I with that of the total I."""
-    if round(grupo, 3) == round(total, 3):
-        return "mas", f"é a mesma ({bn(grupo, 3)} nos dois casos)"
-    if abs(grupo - total) <= 0.05:
-        return "mas", f"é próxima ({bn(grupo, 3)} e {bn(total, 3)})"
-    return "e", f"difere ({bn(grupo, 3)} no grupo e {bn(total, 3)} no total)"
-
-
-# --------------------------------------------------------------------------- blocks of the monthly report
-def par_resumo(f: FatosBaixaRenda) -> str:
-    d = f.idc["t1"] - f.idc["tprev"]
-    nota_d = f" ({NOTA_ARREDONDAMENTO})" if _inconsistente(f.idc["tprev"], f.idc["t1"], 3) else ""
-    return (
-        f"O IDC para a população de baixa renda --- tomadores pessoa física com renda de até 2 salários mínimos, incluindo os sem rendimento --- "
-        f"foi de {bn(f.idc['t1'], 3)} em {bmes(f.t1)}, com {'alta' if d > 0 else 'queda'} de {bponto(d)}{nota_d} em relação aos "
-        f"{bn(f.idc['tprev'], 3)} de {bmes(f.tprev)}. Esse índice mantém o C do IDC geral e usa o I e o Q do crédito livre tomado por esse grupo, que marcaram "
-        f"{bn(f.i['norm_t1'], 3)} e {bn(f.q['norm_t1'], 3)} na escala normalizada. O resultado foi o {ordinal(f.rank)} maior entre as "
-        f"{b(str(f.n_obs))} observações válidas desde {bmes(f.inicio)}."
-    )
-
-
-def pars_resultados(f: FatosBaixaRenda) -> str:
-    d = f.idc["t1"] - f.idc["tprev"]
-    di, dq = f.i["t1"] - f.i["tprev"], f.q["t1"] - f.q["tprev"]
-    g = f.geral["idc_t1"]
-    comparacao = (f"valor igual ao do IDC geral ({bn(g, 3)})" if round(f.idc["t1"], 3) == round(g, 3)
-                  else f"{'acima' if f.idc['t1'] > g else 'abaixo'} do IDC geral ({bn(g, 3)})")
-    if f.rank_i == 1:
-        destaque_i = ", o maior valor da série do grupo"
-    elif f.rank_i <= 3:
-        destaque_i = f", o {ordinal(f.rank_i)} maior valor da série do grupo (o máximo foi de {bpct(f.i['max'], 2)} em {bmes(f.i_max_mes)})"
-    else:
-        destaque_i = ""
-    mov_i = (f"ficou estável em {bpct(f.i['t1'], 2)}" if round(f.i["tprev"], 2) == round(f.i["t1"], 2)
-             else f"{_verbo(di, 'avançou', 'recuou')} de {bpct(f.i['tprev'], 2)} para {bpct(f.i['t1'], 2)}")
-    mov_q = (f"ficou estável em {bpct(f.q['t1'], 2)}" if round(f.q["tprev"], 2) == round(f.q["t1"], 2)
-             else f"{_verbo(dq, 'subiu', 'caiu')} de {bpct(f.q['tprev'], 2)} para {bpct(f.q['t1'], 2)}")
-    nota_d = f" ({NOTA_ARREDONDAMENTO})" if _inconsistente(f.idc["tprev"], f.idc["t1"], 3) else ""
-    nota_i = f", {NOTA_ARREDONDAMENTO}" if _inconsistente(f.i["tprev"], f.i["t1"], 2) else ""
-    nota_q = f", {NOTA_ARREDONDAMENTO}" if _inconsistente(f.q["tprev"], f.q["t1"], 2) else ""
-    p1 = (
-        f"No grupo de baixa renda, o IDC {_verbo(d)} {bponto(d)}{nota_d} em {bmes(f.t1)}, de {bn(f.idc['tprev'], 3)} para {bn(f.idc['t1'], 3)}, "
-        f"{comparacao}. A inadimplência (I) do grupo {mov_i} "
-        f"({bpp(di)}{nota_i}){destaque_i}, e seu valor normalizado passou de {bn(f.i['norm_tprev'], 3)} para {bn(f.i['norm_t1'], 3)}. "
-        f"A participação do crédito oneroso (Q) {mov_q} "
-        f"({bpp(dq)}{nota_q}), com valor normalizado de {bn(f.q['norm_t1'], 3)}."
-    )
-    conjuncao, posicao = _posicao(f.i["norm_t1"], f.geral["I_norm_t1"])
-    nivel = "maior" if f.i["t1"] > f.geral["I_t1"] else "menor"
-    p2 = (
-        f"Como C é o mesmo nos dois índices, a diferença entre eles decorre apenas de I e Q: a inadimplência do grupo ({bpct(f.i['t1'], 2)}) é {nivel} "
-        f"que a do total ({bpct(f.geral['I_t1'], 1)}), {conjuncao} a posição de cada série em sua própria história {posicao}. "
-        f"Assim como o IDC geral, o índice para baixa renda mede posição relativa no histórico do próprio grupo, "
-        f"e não o nível absoluto de desconforto."
-    )
-    return p1 + "\n\n" + p2
-
-
-def par_trajetoria(f: FatosBaixaRenda) -> str:
-    maximos = f.meses_maximo
-    txt_max = ""
-    if maximos:
-        lista = [bmes(m) for m in maximos]
-        txt_max = f"atingiu {bn(1.0, 3)} em {' e '.join(lista) if len(lista) <= 2 else ', '.join(lista[:-1]) + ' e ' + lista[-1]}"
-    return (
-        f"A Figura~\\ref{{fig:indice}} traz também o IDC para baixa renda, exibido desde {bmes(f.inicio)}, que {txt_max + ' e ' if txt_max else ''}"
-        f"passou de {bn(f.idc['tprev'], 3)} em {bmes(f.tprev)} para {bn(f.idc['t1'], 3)} em {bmes(f.t1)}. Nos painéis de I e de Q da "
-        f"Figura~\\ref{{fig:componentes}}, as linhas tracejadas mostram as séries do grupo de baixa renda desde {bmes(JANELA_INICIO)}."
-    )
-
-
-def par_indisponivel(resultado: Resultado) -> str:
-    """Sentence that replaces the low-income blocks when the index could not be updated in the edition."""
-    razao = {
-        "bloqueio": "porque os dados do SCR.data do Banco Central divergem das séries oficiais além do limite de tolerância adotado na construção do índice",
-        "sem_cobertura": ("porque os dados do SCR.data do Banco Central ainda não cobrem " + (bmes(resultado.t1) if resultado.t1 is not None else "o mês de referência")),
-        "sem_dados": "porque os dados do SCR.data do Banco Central não estavam disponíveis",
-    }.get(resultado.status, "porque os dados necessários não estavam disponíveis")
-    return f"O IDC para a população de baixa renda não foi atualizado nesta edição, {razao}. O IDC geral não depende dessa fonte."
-
-
-def nota_baixa_renda() -> str:
-    """Note on the method of the low-income IDC (the report is self-contained: it cites no other document)."""
-    return (
-        "Sobre o IDC para baixa renda. O IDC para a população de baixa renda segue as regras do IDC geral, com duas diferenças. "
-        "O componente C é o mesmo, porque o Banco Central não divulga o comprometimento de renda por faixa de renda. I e Q passam a ser calculados para o "
-        "crédito livre de pessoas físicas com renda de até 2 salários mínimos, incluindo as que não têm rendimento, segundo a faixa de renda informada "
-        "ao Sistema de Informações de Crédito (SCR), com o SCR.data do Banco Central (operações de crédito livre PF, exceto financiamento rural, "
-        "imobiliário e de exportação ou importação). Esses dois componentes são normalizados pelo método min-max com janela expansiva a partir de "
-        f"{mes(JANELA_INICIO)}, primeiro mês do SCR.data, e o índice é exibido a partir de {mes(primeira_exibicao())}, 34 meses depois, o mesmo período de "
-        "aquecimento do IDC geral. O Banco Central reprocessa os arquivos do SCR.data continuamente, e as séries do grupo incorporam a versão "
-        "disponível na data do cálculo. Os valores de I e Q do grupo aparecem com duas casas decimais no texto."
-    )
-
-
+# --------------------------------------------------------------------------- table of the statistical appendix
 def tabela_componentes(f: FatosBaixaRenda, mesref: str = r"\mesref", fonte: str | None = None) -> str:
     """Components of both IDCs side by side (raw and normalised), with a two-level header."""
     g = f.geral
@@ -293,11 +179,11 @@ def tabela_componentes(f: FatosBaixaRenda, mesref: str = r"\mesref", fonte: str 
     nota = f"\n\\fonte{{{fonte}}}\n" if fonte else ""
     return rf"""\begin{{table}}[htbp]
   \centering
-  \caption{{Componentes brutos e valores normalizados do IDC geral e do IDC para baixa renda --- {mesref}.}}
+  \caption{{Componentes brutos e valores normalizados do IDC Geral e do IDC Baixa Renda --- {mesref}.}}
   \label{{tab:componentes}}
   \begin{{tabular}}{{>{{\raggedright\arraybackslash}}p{{6.0cm}}rrrr}}
     \toprule
-    & \multicolumn{{2}}{{c}}{{IDC geral}} & \multicolumn{{2}}{{c}}{{IDC para baixa renda}} \\
+    & \multicolumn{{2}}{{c}}{{IDC Geral}} & \multicolumn{{2}}{{c}}{{IDC Baixa Renda}} \\
     \cmidrule(lr){{2-3}}\cmidrule(lr){{4-5}}
     Indicador & Bruto & Normalizado & Bruto & Normalizado \\
     \midrule

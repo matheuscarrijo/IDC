@@ -250,7 +250,7 @@ def tab_evolucao(d: DadosApendice) -> str:
         return [rotulo, num(serie.loc[t0], nd), num(serie.loc[tp], nd), num(serie.loc[t1], nd),
                 num(serie.loc[t1] - serie.loc[tp], nd, True), num(serie.loc[t1] - serie.loc[t0], nd, True)]
     linhas = [
-        linha(r"\textbf{IDC geral}", d.idx["index"], 3), linha(r"\textbf{IDC para baixa renda}", d.low["IDC"], 3),
+        linha(r"\textbf{IDC Geral}", d.idx["index"], 3), linha(r"\textbf{IDC Baixa Renda}", d.low["IDC"], 3),
         linha(r"C --- comprometimento de renda, \%", sg["C_total"], 2),
         linha(r"I geral (SGS), \%", sg["inad_total"], 2),
         linha(r"I baixa renda (SCR.data), \%", d.low["I"], 2),
@@ -271,10 +271,10 @@ def tab_anual(d: DadosApendice) -> str:
     for ano in sorted(rel["idc_por_ano"]):
         linhas.append([str(ano), num(rel["geral_por_ano"][ano], 3), num(rel["idc_por_ano"][ano], 3), num(rel["por_ano"][ano], 3, True)])
     return tabela_latex(
-        "IDC geral e IDC para baixa renda: média anual dos meses exibidos.", "tab:anual",
-        ["Ano", "IDC geral", "IDC baixa renda", "Diferença"], linhas, r"lrrr",
+        "IDC Geral e IDC Baixa Renda: média anual dos meses exibidos.", "tab:anual",
+        ["Ano", "IDC Geral", "IDC Baixa Renda", "Diferença"], linhas, r"lrrr",
         f"Banco Central do Brasil (SGS e SCR.data), elaboração própria. {d.f.inicio.year} inclui {mes(d.f.inicio)} a dez-{d.f.inicio.year}; {d.t1.year}, jan-{d.t1.year} a {mes(d.t1)}. "
-        "Diferença = IDC para baixa renda menos IDC geral.", tamanho=r"\small", posicao="H")
+        "Diferença = IDC Baixa Renda menos IDC Geral.", tamanho=r"\small", posicao="H")
 
 
 def tab_conciliacao_t1(d: DadosApendice) -> str:
@@ -353,7 +353,7 @@ def tab_cenarios(d: DadosApendice) -> str:
         r = c.loc[k]
         linhas.append([rot, num(r["idc_t1"], 3), num(r["var_t1"], 3, True), num(r["media_abs"], 3), num(r["max_abs"], 3) + f" ({mes(r['mes_max'])})"])
     return tabela_latex(
-        f"Sensibilidade do IDC para baixa renda a saltos de composição do grupo --- {mes(d.t1)}.", "tab:cenarios",
+        f"Sensibilidade do IDC Baixa Renda a saltos de composição do grupo --- {mes(d.t1)}.", "tab:cenarios",
         ["Cenário", f"IDC {mes(d.t1)}", "Variação", r"Média $|$var.$|$", r"Máx. $|$var.$|$"], linhas, r">{\raggedright\arraybackslash}p{5.9cm}rrrr",
         "Banco Central do Brasil (SGS e SCR.data), elaboração própria. Nos meses indicados, as variações mensais de I e de Q do grupo são substituídas "
         "pelas da série geral e o índice é recalculado. Variação = cenário menos série observada; média e máximo em valor absoluto entre "

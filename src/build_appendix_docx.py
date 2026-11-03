@@ -273,7 +273,11 @@ def build_docx(tex_path: Path, output_path: Path, *, assets_dir: Path | None = N
     section = document.add_section(WD_SECTION.NEW_PAGE)
     R._configure_page(section)
     R._restart_page_number(section, 1)
-    R._configure_content_header_footer(section, R._plain_latex(cover["reporttitle"]) + " — Apêndice Estatístico")
+    R._configure_content_header_footer(
+        section,
+        R._plain_latex(cover["reporttitle"]) + " — Apêndice Estatístico",
+        R._plain_latex(cover.get("reportinstitution", R.DEFAULT_INSTITUTION)),
+    )
     # Editable, populated contents avoids an empty field in renderers that do
     # not update TOC fields automatically. The headings are the source of truth.
     document.add_heading("Sumário", level=1)

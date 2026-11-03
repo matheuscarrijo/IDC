@@ -1,0 +1,212 @@
+% Report template used by the tests: the same body as the local template
+% (outputs/report/template-latex/template.tex), with a minimal preamble.
+% Regenerate the body from the template whenever its structure changes.
+\documentclass[11pt,a4paper]{article}
+
+\newcommand{\placeholder}[1]{\textbf{[#1]}}
+\newcommand{\reporttitle}{Índice de Desconforto de Crédito (IDC)}
+\newcommand{\reportinstitution}{FGVcemif}
+\newcommand{\mesreferencia}{\placeholder{mês por extenso de ano}}   % ex.: "fevereiro de 2026"
+\newcommand{\mesref}{\placeholder{mmm-AAAA}}                        % ex.: "fev-2026"
+\newcommand{\mesanterior}{\placeholder{mmm-AAAA}}                   % ex.: "jan-2026"
+\newcommand{\competencia}{\placeholder{AAAAMM}}                     % ex.: "202604"
+\newcommand{\mespublicacao}{\placeholder{mês de ano}}               % ex.: "abril de 2026"
+\newcommand{\janelainicio}{jan-2014}
+\newcommand{\seriesinicio}{mar-2011}
+\newcommand{\reportsubtitle}{Nota Técnica de Atualização --- divulgação em \mespublicacao; competência \mesreferencia}
+\newcommand{\reportdate}{\placeholder{Mês de ano}}                 % ex.: "Abril de 2026"
+\newcommand{\authorone}{Lauro Gonzalez}
+\newcommand{\authortwo}{Matheus L. Carrijo}
+\newcommand{\authorthree}{Rafael Schiozer}
+
+\begin{document}
+
+\section{Resumo}
+
+Com a publicação, em \mespublicacao, das Estatísticas Monetárias e de Crédito do
+Banco Central do Brasil, o Índice de Desconforto de Crédito (IDC) foi recalculado e
+estendido até \mesreferencia, último mês com observação disponível para o
+comprometimento de renda das famílias (SGS~29034).
+% >>> IDC (apresentacao): gerado por src.fill_report; revise o texto sem alterar os números
+\placeholder{Apresentação do IDC Baixa Renda.}
+% <<< IDC (apresentacao)
+
+% >>> IDC (resumo): gerado por src.fill_report; revise o texto sem alterar os números
+\placeholder{Valor do IDC Geral e do IDC Baixa Renda em \mesref, comparação com \mesanterior{} e posição histórica.}
+
+\placeholder{Posição na escala normalizada e comparação dos valores brutos dos dois grupos.}
+% <<< IDC (resumo)
+
+\section{Resultados de \mesreferencia}
+
+% >>> IDC (tabela): gerado por src.fill_report; revise o texto sem alterar os números
+\begin{table}[htbp]
+  \centering
+  \caption{Componentes brutos e valores normalizados do IDC Geral e do IDC Baixa Renda --- \mesref.}
+  \label{tab:componentes}
+  \begin{tabular}{>{\raggedright\arraybackslash}p{6.0cm}rrrr}
+    \toprule
+    & \multicolumn{2}{c}{IDC Geral} & \multicolumn{2}{c}{IDC Baixa Renda} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+    Indicador & Bruto & Normalizado & Bruto & Normalizado \\
+    \midrule
+    IDC (média dos componentes normalizados) & --- & \textbf{\placeholder{X,XXX}} & --- & \textbf{\placeholder{X,XXX}} \\
+    C --- Comprometimento de renda das famílias com a dívida & \placeholder{XX,X}\% & \placeholder{X,XXX} & \placeholder{XX,X}\% & \placeholder{X,XXX} \\
+    I --- Inadimplência da carteira de crédito livre PF (90+ dias) & \placeholder{X,X}\% & \placeholder{X,XXX} & \placeholder{XX,X}\% & \placeholder{X,XXX} \\
+    Q --- Participação do crédito oneroso no crédito livre PF & \placeholder{XX,X}\% & \placeholder{X,XXX} & \placeholder{XX,X}\% & \placeholder{X,XXX} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\fonte{Banco Central do Brasil (Estatísticas Monetárias e de Crédito, divulgação
+\competencia; SCR.data para o IDC Baixa Renda), elaboração própria.}
+% <<< IDC (tabela)
+
+% >>> IDC (geral): gerado por src.fill_report; revise o texto sem alterar os números
+\subsection*{IDC Geral --- Componentes}
+
+\begin{itemize}
+  \item \textbf{Comprometimento de renda (C):} \placeholder{variação de C e valor normalizado.}
+
+  \item \textbf{Inadimplência (I):} \placeholder{variação de I e valor normalizado.}
+
+  \item \textbf{Participação do crédito oneroso (Q):} \placeholder{variação de Q e valor normalizado.}
+\end{itemize}
+% <<< IDC (geral)
+
+% >>> IDC (baixa-renda): gerado por src.fill_report; revise o texto sem alterar os números
+\subsection*{IDC Baixa Renda --- Componentes}
+
+\begin{itemize}
+  \item \textbf{Comprometimento de renda (C):} \placeholder{mesma série do IDC Geral.}
+
+  \item \textbf{Inadimplência (I):} \placeholder{variação de I do grupo e valor normalizado.}
+
+  \item \textbf{Participação do crédito oneroso (Q):} \placeholder{variação de Q do grupo e valor normalizado.}
+\end{itemize}
+
+\placeholder{Comparação entre os componentes brutos e normalizados dos dois índices.}
+% <<< IDC (baixa-renda)
+
+% SEÇÃO OPCIONAL — REVISÕES DOS DADOS
+% Não inclua essa seção no relatório mensal por padrão.
+% A auditoria de "python -m src.compare_releases YYYYMM" é sempre integral,
+% mas uma revisão rotineira só recebe destaque público quando satisfaz a dupla
+% materialidade: altera o IDC em pelo menos 0,010 ponto E afeta um elemento
+% efetivamente discutido no relatório. Inversão de sinal, criação/remoção de
+% recorde, invalidação de afirmação anterior, mudança metodológica relevante,
+% mudança de fonte/cobertura ou correção de erro relevante podem justificar a
+% seção independentemente do limiar. Reprocessamentos amplos
+% da fonte só entram quando alteram materialmente a trajetória ou a interpretação.
+% Quando necessária, insira aqui "Revisões dos dados" e mostre apenas as
+% competências materiais ou indispensáveis para explicar a base de comparação,
+% com três casas decimais. O registro técnico preserva todas as diferenças.
+
+\section{Trajetória dos índices}
+
+% >>> IDC (trajetoria): gerado por src.fill_report; revise o texto sem alterar os números
+\placeholder{Apresentação das Figuras 1 a 4 e faixa de variação dos índices nos últimos 12 meses.}
+% <<< IDC (trajetoria)
+
+% COMENTÁRIO DOS AUTORES (OPCIONAL)
+% Só entra quando os autores enviarem um comentário para a edição (por exemplo,
+% sobre uma política pública). Copie o texto deles, corrigindo apenas
+% digitação e pontuação, aqui, entre \begin{quote} e \end{quote}. O agente
+% nunca escreve esse comentário nem o reaproveita de uma edição anterior.
+
+\section*{Notas}
+
+\begingroup\footnotesize
+
+Sobre o IDC Geral. O Índice de Desconforto de Crédito (IDC) é construído a partir de
+três séries do Sistema Gerenciador de Séries Temporais (SGS) do Banco Central do Brasil:
+comprometimento de renda das famílias com o serviço da dívida (SGS~29034), inadimplência
+da carteira de crédito livre PF --- atrasos superiores a 90 dias (SGS~21112) --- e
+participação do crédito oneroso, definida como a parcela do saldo total de crédito
+livre para pessoa física (SGS~20570) nas modalidades cheque especial (SGS~20573), crédito
+pessoal não consignado (SGS~20574), cartão de crédito rotativo (SGS~20587) e cartão de
+crédito parcelado (SGS~20588). Cada componente é
+normalizado pelo método min-max com janela expansiva, a partir de \seriesinicio; o índice
+é exibido a partir de \janelainicio, após o período de aquecimento da janela, e corresponde
+à média simples dos três componentes normalizados, contido no intervalo [0,~1], em que 1 corresponde
+ao pior resultado do histórico observado e 0 ao melhor. Por
+construção, o IDC mede a posição relativa do mês corrente em relação ao histórico observado
+pelo índice. O relatório de divulgação está disponível em
+\url{https://eaesp.fgv.br/producao-intelectual/indice-desconforto-credito-idc}.
+
+% >>> IDC (nota-baixa-renda): gerado por src.fill_report; revise o texto sem alterar os números
+\placeholder{Sobre o IDC Baixa Renda: método, janelas e fonte.}
+% <<< IDC (nota-baixa-renda)
+
+Revisões dos dados. Os valores históricos do IDC são recalculados a cada edição
+com a safra mais recente dos dados do Banco Central. Revisões com efeito material
+sobre o índice ou sua interpretação são descritas no relatório; a série
+disponibilizada incorpora todas as revisões identificadas.
+
+Citação recomendada. Gonzalez, L.; Carrijo, M.~L.; Schiozer, R.
+\textit{Índice de Desconforto de Crédito (IDC).} \reportinstitution\@.
+\endgroup
+
+% As figuras ficam em um anexo próprio, uma por página. Assim, nenhuma figura
+% disputa espaço com o corpo textual ou precisa ser reduzida para caber.
+\clearpage
+\section*{Anexo de figuras}
+
+% >>> IDC (anexo): gerado por src.fill_report; revise o texto sem alterar os números
+\begin{figure}[H]
+  \centering
+  \IfFileExists{index.png}{%
+    \includegraphics[width=\linewidth]{index.png}%
+  }{%
+    \fbox{\rule{0pt}{14cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução do IDC Geral (\janelainicio{} a \mesref) e do IDC Baixa Renda (\placeholder{mmm-AAAA} a \mesref).}
+  \label{fig:indice}
+  \fonte{BCB (SGS e SCR.data), elaboração própria.}
+\end{figure}
+
+\clearpage
+\begin{figure}[H]
+  \centering
+  \IfFileExists{index_since_2022.png}{%
+    \includegraphics[width=\linewidth]{index_since_2022.png}%
+  }{%
+    \fbox{\rule{0pt}{14cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução do IDC Geral e do IDC Baixa Renda (dez-2022 a \mesref).}
+  \label{fig:periodo}
+  \fonte{BCB (SGS e SCR.data), elaboração própria.}
+\end{figure}
+
+\clearpage
+\begin{figure}[H]
+  \centering
+  \IfFileExists{index_12m.png}{%
+    \includegraphics[width=\linewidth]{index_12m.png}%
+  }{%
+    \fbox{\rule{0pt}{11cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{IDC Geral e IDC Baixa Renda nos últimos 12 meses (\placeholder{mmm-AAAA} a \mesref).}
+  \label{fig:recente}
+  \fonte{BCB (SGS e SCR.data), elaboração própria.}
+\end{figure}
+
+\clearpage
+\begin{figure}[H]
+  \centering
+  \IfFileExists{components_raw.png}{%
+    \includegraphics[width=\linewidth]{components_raw.png}%
+  }{%
+    \fbox{\rule{0pt}{17cm}%
+      \rule{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{0pt}}%
+  }
+  \caption{Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref); I e Q também para o grupo de baixa renda (\placeholder{mmm-AAAA} a \mesref).}
+  \label{fig:componentes}
+  \fonte{BCB (SGS e SCR.data), elaboração própria.}
+\end{figure}
+% <<< IDC (anexo)
+
+\end{document}

@@ -214,7 +214,7 @@ class ApendiceIntegrationTests(unittest.TestCase):
     def test_segment_intro_explains_sources_without_a_reconciliation_table(self):
         intro = self.corpo.split(r"\subsection{Universo e leitura das tabelas}", 1)[1].split(r"\subsection{Faixa de renda}", 1)[0]
         self.assertIn("As contribuições somam as variações calculadas no SCR.data", intro)
-        self.assertIn("podem diferir das variações dos componentes do IDC geral", intro)
+        self.assertIn("podem diferir das variações dos componentes do IDC Geral", intro)
         self.assertNotIn(r"\label{tab:conc_t1}", self.corpo)
         self.assertNotIn("status alerta", intro)
         self.assertIn("conciliacao", self.d.ext.dados)

@@ -20,7 +20,7 @@ from src.pt_format import mes
 
 FIGURAS = {"atribuicao": "apendice_atribuicao_I.png", "idc_faixa": "apendice_idc_faixa.png",
            "lentes": "apendice_lentes.png", "uf": "apendice_uf.png", "componentes": "apendice_components_raw.png"}
-FONTE_COMPONENTES = ("Banco Central do Brasil (SGS e SCR.data), elaboração própria. IDC para baixa renda: C nacional; "
+FONTE_COMPONENTES = ("Banco Central do Brasil (SGS e SCR.data), elaboração própria. IDC Baixa Renda: C nacional; "
                      "I e Q do crédito livre PF com renda de até 2 SM, incluindo sem rendimento.")
 LARGURA_ROTULO_LENTES = ("p{3.5cm}", "p{4.3cm}")  # segment names wrap less with a wider first column
 
@@ -61,7 +61,7 @@ def figura(arquivo: str, legenda: str, rotulo: str, fonte: str, altura: str = "0
 def montar_figuras(d: DadosApendice) -> dict[str, str]:
     ini_atrib = d.t1 - pd.DateOffset(months=17)
     return {
-        "indice": figura("index.png", rf"Evolução do IDC geral (\janelainicio{{}} a \mesref) e do IDC para baixa renda ({mes(d.f.inicio)} a \mesref).",
+        "indice": figura("index.png", rf"Evolução do IDC Geral (\janelainicio{{}} a \mesref) e do IDC Baixa Renda ({mes(d.f.inicio)} a \mesref).",
                          "fig:indice", "BCB (SGS e SCR.data), elaboração própria.", "0.78", "1.0"),
         "componentes": figura(FIGURAS["componentes"], r"Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref); as linhas tracejadas mostram I e Q para baixa renda (até 2 SM, incluindo sem rendimento), de jul-2012 a \mesref, no SCR.data.",
                               "fig:componentes", "BCB (SGS e SCR.data), elaboração própria.", "0.7"),

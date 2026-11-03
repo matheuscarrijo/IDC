@@ -122,7 +122,7 @@ class DocumentTests(unittest.TestCase):
         self.assertEqual(len(re.findall(r"\\section\{", text)), 8)
         self.assertIn(r"\section{Figuras}\label{sec:figuras}", text)
         self.assertIn(r"\tableofcontents", text)
-        self.assertIn(r"Apêndice Estatístico --- Divulgação \mespublicacao; competência \mesreferencia", text)
+        self.assertIn(r"Apêndice Estatístico --- divulgação em \mespublicacao; competência \mesreferencia", text)
         self.assertNotIn("Versão para discussão", text)
         self.assertIn(r"\usepackage{adjustbox}", text)  # the tables are scaled to the text width when they are wider
         draft = BA.document(d, FIXTURE.read_text(encoding="utf-8").replace(r"\documentclass[11pt,a4paper]{article}", PREAMBLE), draft=True)
