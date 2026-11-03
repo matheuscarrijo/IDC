@@ -1,4 +1,4 @@
-"""Assembly of the appendix body: tables, figures and the seven sections.
+"""Assembly of the appendix body: tables, figures and sections.
 
 ``montar_corpo`` returns the LaTeX between the table of contents and ``\\end{document}``; ``gerar_figuras``
 draws the four figures that only the appendix uses.  The preamble, the cover and the compilation live in
@@ -19,9 +19,8 @@ from src.income_idc import primeira_exibicao
 from src.pt_format import mes
 
 FIGURAS = {"atribuicao": "apendice_atribuicao_I.png", "idc_faixa": "apendice_idc_faixa.png",
-           "lentes": "apendice_lentes.png", "uf": "apendice_uf.png"}  # figures drawn for the appendix (index.png and
-# components_raw.png are the figures of the monthly report, with the low-income lines)
-FONTE_COMPONENTES = ("Banco Central do Brasil (SGS e SCR.data), elaboração própria. IDC para baixa renda: C nacional; "
+           "lentes": "apendice_lentes.png", "uf": "apendice_uf.png", "componentes": "apendice_components_raw.png"}
+FONTE_COMPONENTES = ("Banco Central do Brasil (SGS e SCR.data), elaboração própria. IDC Baixa Renda: C nacional; "
                      "I e Q do crédito livre PF com renda de até 2 SM, incluindo sem rendimento.")
 LARGURA_ROTULO_LENTES = ("p{3.5cm}", "p{4.3cm}")  # segment names wrap less with a wider first column
 
@@ -33,20 +32,25 @@ def montar_tabelas(d: DadosApendice) -> dict[str, str]:
         tabs[k] = tabs[k].replace(r">{\raggedright\arraybackslash}" + LARGURA_ROTULO_LENTES[0], r">{\raggedright\arraybackslash}" + LARGURA_ROTULO_LENTES[1])
     novas = {
         "componentes": LI.tabela_componentes(d.f, fonte=FONTE_COMPONENTES),
-        "evolucao": AP.tab_evolucao(d), "anual": AP.tab_anual(d), "conc_t1": AP.tab_conciliacao_t1(d), "conc_hist": AP.tab_conciliacao_hist(d),
+        "comprometimento": AP.tab_comprometimento(d),
+        "composicao_q": AP.tab_composicao_q(d),
+        "evolucao": AP.tab_evolucao(d), "anual": AP.tab_anual(d),
         "quebras": AP.tab_quebras(d), "janeiros": AP.tab_janeiros(d), "cenarios": AP.tab_cenarios(d),
         "sensibilidade": AP.tab_sensibilidade(d), "teste_ref": AP.tab_teste_ref(d),
     }
     tabs.update({k: AP.preparar_tabela(v) for k, v in novas.items()})
+    # Keep the C and Q tables in the intended order relative to Figure A3.
+    for k in ("comprometimento", "composicao_q"):
+        tabs[k] = tabs[k].replace(r"\begin{table}[htbp]", r"\begin{table}[H]", 1)
     assert all(r"\fonte" in v.split(r"\end{table}")[0] for v in tabs.values()), "every table needs its source note inside the float"
     return tabs
 
 
-def figura(arquivo: str, legenda: str, rotulo: str, fonte: str, altura: str = "0.62") -> str:
+def figura(arquivo: str, legenda: str, rotulo: str, fonte: str, altura: str = "0.62", largura: str = "0.92") -> str:
     return rf"""
 \begin{{figure}}[htbp]
   \centering
-  \includegraphics[width=0.92\linewidth,height={altura}\textheight,keepaspectratio]{{{arquivo}}}
+  \includegraphics[width={largura}\linewidth,height={altura}\textheight,keepaspectratio]{{{arquivo}}}
   \caption{{{legenda}}}
   \label{{{rotulo}}}
   \fonte{{{fonte}}}
@@ -57,9 +61,9 @@ def figura(arquivo: str, legenda: str, rotulo: str, fonte: str, altura: str = "0
 def montar_figuras(d: DadosApendice) -> dict[str, str]:
     ini_atrib = d.t1 - pd.DateOffset(months=17)
     return {
-        "indice": figura("index.png", rf"Evolução do IDC geral (\janelainicio{{}} a \mesref) e do IDC para baixa renda ({mes(d.f.inicio)} a \mesref).",
-                         "fig:indice", "BCB (SGS e SCR.data), elaboração própria."),
-        "componentes": figura("components_raw.png", r"Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref); I e Q também para baixa renda (jul-2012 a \mesref).",
+        "indice": figura("index.png", rf"Evolução do IDC Geral (\janelainicio{{}} a \mesref) e do IDC Baixa Renda ({mes(d.f.inicio)} a \mesref).",
+                         "fig:indice", "BCB (SGS e SCR.data), elaboração própria.", "0.78", "1.0"),
+        "componentes": figura(FIGURAS["componentes"], r"Evolução das componentes brutas C, I e Q (\seriesinicio{} a \mesref); as linhas tracejadas mostram I e Q para baixa renda (até 2 SM, incluindo sem rendimento), de jul-2012 a \mesref, no SCR.data.",
                               "fig:componentes", "BCB (SGS e SCR.data), elaboração própria.", "0.7"),
         "atribuicao": figura(FIGURAS["atribuicao"], rf"Contribuição de cada grupo de produtos à variação mensal da inadimplência (I), {mes(ini_atrib)} a \mesref.",
                              "fig:atribuicao", "BCB (SGS), elaboração própria."),
@@ -75,21 +79,26 @@ def montar_corpo(d: DadosApendice) -> str:
     tabs, fig = montar_tabelas(d), montar_figuras(d)
     return "\n".join([
         TA.s1_escopo(d),
-        TA.s2_indices(d, tabs), fig["indice"], fig["componentes"],
-        TA.s3_anatomia(d, tabs), fig["atribuicao"],
-        TA.s4_segmentos(d, tabs), fig["lentes"], fig["uf"],
-        TA.s5_faixas(d, tabs), fig["idc_faixa"],
+        TA.s2_indices(d, tabs),
+        TA.s3_anatomia(d, tabs),
+        TA.s4_segmentos(d, tabs),
+        TA.s5_faixas(d, tabs),
         TA.s6_qualidade(d, tabs),
         TA.s7_metodologia(d),
+        r"\FloatBarrier" + "\n" + r"\section{Figuras}\label{sec:figuras}",
+        *(fig[k].replace(r"\begin{figure}[htbp]", r"\begin{figure}[H]", 1)
+          for k in ("indice", "componentes", "atribuicao", "lentes", "uf", "idc_faixa")),
     ])
 
 
 def gerar_figuras(d: DadosApendice, destino: Path) -> None:
     """Draw the figures of the appendix that are not figures of the monthly report."""
     from src import plot_extras as PX
+    from src import plot
     from src.anatomy import agrupar, atribuir_variacao_I
 
     destino.mkdir(parents=True, exist_ok=True)
+    plot._plot_components_raw(d.comp, d.low, output_path=destino / FIGURAS["componentes"], low_income_legend=False)
     meses = pd.date_range(d.t1 - pd.DateOffset(months=17), d.t1, freq="MS")
     contribuicoes = pd.DataFrame({m: agrupar(atribuir_variacao_I(d.sgs, m - pd.DateOffset(months=1), m))["total"] for m in meses}).T
     PX.fig_atribuicao_mensal_I(contribuicoes, d.sgs["inad_total"].diff().loc[meses], destino / FIGURAS["atribuicao"])

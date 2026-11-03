@@ -6,9 +6,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import matplotlib.ticker
+from matplotlib.lines import Line2D
+import numpy as np
 import pandas as pd
 
 from src import plot_overlay as overlay
+from src.plot_recent import plot_recent
 
 FIGURES_DIR = Path("outputs/figures")
 
@@ -185,6 +189,18 @@ def _apply_excel_style() -> None:
     })
 
 
+def num(value: float, fmt: str) -> str:
+    """A value with the decimal comma of the report, e.g. ``num(0.9661, ".3f")`` is ``0,966``."""
+    return f"{value:{fmt}}".replace(".", ",")
+
+
+class _CommaFormatter(matplotlib.ticker.ScalarFormatter):
+    """Axis tick labels with the decimal comma of the report."""
+
+    def __call__(self, x, pos=None):
+        return super().__call__(x, pos).replace(".", ",")
+
+
 def _style_ax(ax, xlabel: str = None, ylabel: str = None, ylim: tuple = None) -> None:
     for spine in ax.spines.values():
         spine.set_visible(True)
@@ -198,6 +214,7 @@ def _style_ax(ax, xlabel: str = None, ylabel: str = None, ylim: tuple = None) ->
     ax.xaxis.set_major_locator(mdates.YearLocator(2))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
     ax.tick_params(axis="y", length=0)
+    ax.yaxis.set_major_formatter(_CommaFormatter())
 
     if xlabel:
         ax.set_xlabel(xlabel)
@@ -329,7 +346,7 @@ def _label_specs(
                 "label_key": "start",
                 "date": s.index[0],
                 "value": s.iloc[0],
-                "text": f"{s.iloc[0]:{fmt}}",
+                "text": num(s.iloc[0], fmt),
             }
         )
     if include_end:
@@ -339,7 +356,7 @@ def _label_specs(
                 "label_key": "end",
                 "date": s.index[-1],
                 "value": s.iloc[-1],
-                "text": f"{s.iloc[-1]:{fmt}}",
+                "text": num(s.iloc[-1], fmt),
             }
         )
     if include_max:
@@ -349,7 +366,7 @@ def _label_specs(
                 "label_key": "max",
                 "date": s.idxmax(),
                 "value": s.max(),
-                "text": f"{s.max():{fmt}}",
+                "text": num(s.max(), fmt),
             }
         )
 
@@ -365,7 +382,7 @@ def _label_specs(
                     "label_key": f"event::{ev_label}",
                     "date": date,
                     "value": s.loc[date],
-                    "text": f"{s.loc[date]:{fmt}}",
+                    "text": num(s.loc[date], fmt),
                 }
             )
 
@@ -378,7 +395,7 @@ def _label_specs(
                     "label_key": "post_pandemic_min",
                     "date": post_pandemic.idxmin(),
                     "value": post_pandemic.min(),
-                    "text": f"{post_pandemic.min():{fmt}}",
+                    "text": num(post_pandemic.min(), fmt),
                 }
             )
 
@@ -391,7 +408,7 @@ def _label_specs(
                     "label_key": "post_desenrola_min",
                     "date": post_desenrola.idxmin(),
                     "value": post_desenrola.min(),
-                    "text": f"{post_desenrola.min():{fmt}}",
+                    "text": num(post_desenrola.min(), fmt),
                 }
             )
 
@@ -477,6 +494,29 @@ def _place_value_label(
     return best_annotation, best_bbox
 
 
+_COMPONENT_MIN_SEPARATION_PT = 45.0
+
+# When two labelled points are too close, only one keeps its marker and label: the last month first, then the
+# first month, the minimum after an event, and the point that marks an event.
+_LABEL_PRIORITY = {"end": 0, "end_near_max": 0, "start": 1, "post_pandemic_min": 2, "post_desenrola_min": 2,
+                   "max": 3, "max_near_end": 3, "max_near_end_left": 3, "event": 4}
+
+
+def _drop_crowded_specs(ax, specs: list, min_separation_pt: float) -> list:
+    """The labelled points without the ones closer than ``min_separation_pt`` to a point of higher priority.
+
+    Two labels for nearby points cannot be told apart (which value belongs to which point), so the less important
+    point is left unmarked and unlabelled.
+    """
+    limit = min_separation_pt * ax.figure.dpi / 72
+    kept = []
+    for spec in sorted(specs, key=lambda sp: (_LABEL_PRIORITY.get(sp["kind"], 5), sp["date"])):
+        x, y = ax.transData.transform((mdates.date2num(spec["date"]), spec["value"]))
+        if all(np.hypot(x - kx, y - ky) >= limit for kx, ky, _ in kept):
+            kept.append((x, y, spec))
+    return sorted((spec for _, _, spec in kept), key=lambda sp: sp["date"])
+
+
 def _validate_label_layout(ax, labels: list, obstacle_artists: Optional[list] = None) -> None:
     fig = ax.figure
     fig.canvas.draw()
@@ -520,6 +560,7 @@ def _add_value_labels(
     candidate_overrides: Optional[dict] = None,
     distance_weight: float = 0.25,
     events: Optional[dict] = None,
+    min_separation_pt: float = 0.0,
 ) -> None:
     specs = _label_specs(
         series,
@@ -541,6 +582,10 @@ def _add_value_labels(
             spec["candidate_overrides"] = candidate_overrides[spec["label_key"]]
         elif spec["kind"] in candidate_overrides:
             spec["candidate_overrides"] = candidate_overrides[spec["kind"]]
+
+    if min_separation_pt:
+        ax.figure.canvas.draw()
+        specs = _drop_crowded_specs(ax, specs, min_separation_pt)
 
     for spec in specs:
         ax.plot(spec["date"], spec["value"], "o", color=color, markersize=4, zorder=6)
@@ -679,54 +724,66 @@ def _nearest_local_peak_after_date(
     return window.idxmax()
 
 
+def _component_event_anchors(comp: str, series: pd.Series) -> dict:
+    """Months whose values mark the historical events in the panel of ``comp``."""
+    if comp == "C":
+        return _local_peak_dates_near_events(series, window_months=6, events=_HISTORICAL_EVENTS)
+    return {"Pandemia\nCOVID-19": _nearest_local_peak_after_date(series, KEY_EVENTS["Pandemia\nCOVID-19"], window_months=6)}
+
+
 def _plot_raw_component_panel(
     ax,
     comp: str,
     series: pd.Series,
     unit: str,
-    show_event_labels: bool = False,
-    event_positions: Optional[dict] = None,
-    show_xlabel: bool = False,
-    include_post_pandemic_min: bool = False,
-    event_anchor_dates: Optional[dict] = None,
-    candidate_overrides: Optional[dict] = None,
-) -> None:
+    low: Optional[pd.Series] = None,
+    low_label: Optional[str] = None,
+    tight_layout: bool = False,
+) -> Optional[Line2D]:
+    """One component in raw values, with its events, its labelled points and, when given, the dashed low-income line.
+
+    The labelled points are the first and last months, the months that mark the events and the minimum after the
+    pandemic; of two points too close to be told apart by their labels only the more important one is kept
+    (``_drop_crowded_specs``).  The labels cover no line (the dashed one included), marker, event name or other
+    label (``_strict_value_labels``).  Returns the dashed line, if any, for a legend.
+    """
     ax.plot(series.index, series.values, color=COMP_COLORS[comp])
     # Preserve enough horizontal room for endpoint labels as the series grows.
     ax.margins(x=0.08)
     ymin, ymax = series.min(), series.max()
     rng = ymax - ymin
-    _style_ax(
-        ax,
-        xlabel=None,
-        ylabel=unit,
-        ylim=(ymin - rng * 0.05, ymax + rng * 0.20),
-    )
+    _style_ax(ax, xlabel=None, ylabel=unit, ylim=(ymin - rng * 0.05, ymax + rng * 0.20))
     ax.set_title(COMP_LABELS[comp])
     event_positions = {
-        "Novo\nDesenrola": {
-            "coords": "data",
-            "y": {"C": 25.0, "I": 5.5, "Q": 22.0}[comp],
-        },
-        **(event_positions or {}),
+        "Novo\nDesenrola": {"coords": "data", "y": {"C": 25.0, "I": 5.5, "Q": 22.0}[comp]},
+        **({"Programa\nDesenrola": {"coords": "data", "y": 22.5}} if comp == "C" else {}),
     }
-    event_texts = _add_events(ax, show_labels=show_event_labels, label_positions=event_positions)
-    _add_value_labels(
-        ax,
+    event_texts = _add_events(ax, label_positions=event_positions)
+    lines, points, dashed = [series], [], None
+    if low is not None:
+        try:  # the general figure must be produced whatever happens with the low-income line
+            dashed = overlay._dashed(ax, low, label=low_label, end_label=False)
+            lines.append(low)
+            points.append((low.index[-1], float(low.iloc[-1]), overlay.COLOR, "end"))
+        except Exception as exc:  # noqa: BLE001
+            print(f"  aviso: linha de baixa renda omitida ({exc!r})")
+    if tight_layout:
+        ax.figure.tight_layout()
+    ax.figure.canvas.draw()
+    specs = _label_specs(
         series,
-        COMP_COLORS[comp],
         ".1f",
-        obstacle_artists=event_texts,
-        force_left_max_near_end=False,
         include_max=False,
         include_start=True,
         include_end=True,
         include_events=True,
-        include_post_pandemic_min=include_post_pandemic_min,
-        event_anchor_dates=event_anchor_dates,
-        candidate_overrides=candidate_overrides or _CLOSE_LABEL_OVERRIDES,
-        distance_weight=0.9,
+        include_post_pandemic_min=True,
+        event_anchor_dates=_component_event_anchors(comp, series),
     )
+    specs = _drop_crowded_specs(ax, specs, _COMPONENT_MIN_SEPARATION_PT)
+    points = [(spec["date"], spec["value"], COMP_COLORS[comp], spec["kind"]) for spec in specs] + points
+    _strict_value_labels(ax, points, event_texts, lines, fmt=".1f")
+    return dashed
 
 
 def _overlay(draw, *args) -> None:
@@ -737,7 +794,8 @@ def _overlay(draw, *args) -> None:
         print(f"  aviso: linhas de baixa renda omitidas ({exc!r})")
 
 
-def _plot_components_raw(components: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
+def _plot_components_raw(components: pd.DataFrame, low_income: Optional[pd.DataFrame] = None, *,
+                         output_path: Optional[Path] = None, low_income_legend: bool = True) -> None:
     """Three stacked panels (shared x-axis) — fits A4 page width."""
     fig, axes = plt.subplots(3, 1, figsize=(_FIG_W, 7.2), sharex=True)
     fig.subplots_adjust(hspace=0.4)
@@ -747,110 +805,22 @@ def _plot_components_raw(components: pd.DataFrame, low_income: Optional[pd.DataF
         ("I", components["I"],       "%"),
         ("Q", components["Q"] * 100, "%"),
     ]
-
-    for i, (ax, (comp, series, unit)) in enumerate(zip(axes, configs)):
-        event_positions = None
-        candidate_overrides = None
-        event_anchor_dates = None
-        if comp == "C":
-            event_positions = {"Programa\nDesenrola": {"coords": "data", "y": 22.5}}
-            candidate_overrides = {
-                **_CLOSE_LABEL_OVERRIDES,
-                "start": [
-                    (0, -7, "center", "top"),
-                    (-1, -7, "center", "top"),
-                    (2, -7, "left", "top"),
-                    (-2, -5, "center", "top"),
-                    (3, -5, "left", "top"),
-                ],
-                "end": [
-                    (2, 7, "left", "bottom"),
-                    (0, 7, "center", "bottom"),
-                    (-2, 7, "right", "bottom"),
-                    (4, 5, "left", "bottom"),
-                    (-4, 7, "right", "bottom"),
-                ],
-            }
-            event_anchor_dates = _local_peak_dates_near_events(
-                series, window_months=6, events=_HISTORICAL_EVENTS,
-            )
-        elif comp == "I":
-            candidate_overrides = {
-                **_CLOSE_LABEL_OVERRIDES,
-                "end": [
-                    (2, 7, "left", "bottom"),
-                    (0, 7, "center", "bottom"),
-                    (4, 5, "left", "bottom"),
-                    (-2, 7, "right", "bottom"),
-                    (-4, 7, "right", "bottom"),
-                ],
-            }
-            event_anchor_dates = {
-                "Pandemia\nCOVID-19": _nearest_local_peak_after_date(
-                    series,
-                    KEY_EVENTS["Pandemia\nCOVID-19"],
-                    window_months=6,
-                )
-            }
-        elif comp == "Q":
-            candidate_overrides = {
-                **_CLOSE_LABEL_OVERRIDES,
-                "start": [
-                    (-2, -5, "right", "top"),
-                    (-1, -7, "right", "top"),
-                    (-3, -3, "right", "top"),
-                    (-2, 0, "right", "center"),
-                    (0, -7, "center", "top"),
-                ],
-                "end": [
-                    (2, 7, "left", "bottom"),
-                    (0, 7, "center", "bottom"),
-                    (4, 5, "left", "bottom"),
-                    (-2, 7, "right", "bottom"),
-                    (-4, 7, "right", "bottom"),
-                ],
-                "event::Programa\nDesenrola": [
-                    (0, -7, "center", "top"),
-                    (2, -7, "left", "top"),
-                    (-2, -7, "right", "top"),
-                    (4, -5, "left", "top"),
-                    (-4, -5, "right", "top"),
-                ],
-                "post_pandemic_min": [
-                    (-6, 0, "right", "center"),
-                    (-6, 3, "right", "bottom"),
-                    (-6, -3, "right", "top"),
-                    (-8, 0, "right", "center"),
-                    (-8, 3, "right", "bottom"),
-                ],
-            }
-            event_anchor_dates = {
-                "Pandemia\nCOVID-19": _nearest_local_peak_after_date(
-                    series,
-                    KEY_EVENTS["Pandemia\nCOVID-19"],
-                    window_months=6,
-                )
-            }
-        _plot_raw_component_panel(
-            ax,
-            comp,
-            series,
-            unit,
-            show_event_labels=True,
-            event_positions=event_positions,
-            show_xlabel=(i == len(configs) - 1),
-            include_post_pandemic_min=True,
-            event_anchor_dates=event_anchor_dates,
-            candidate_overrides=candidate_overrides,
-        )
+    for ax, (comp, series, unit) in zip(axes, configs):
+        low = low_income[comp].dropna() if low_income is not None and comp in ("I", "Q") else None
+        _plot_raw_component_panel(ax, comp, series, unit, low=low)
 
     fig.suptitle(
         "Componentes do Índice — Valores Brutos (não normalizados)",
         fontsize=14, fontweight="bold", y=1.01,
     )
-    if low_income is not None:
-        _overlay(overlay.components_raw, fig, low_income)
-    _save(fig, "components_raw.png")
+    if low_income is not None and low_income_legend:
+        overlay.components_legend(fig)
+    if output_path is None:
+        _save(fig, "components_raw.png")
+    else:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=_DPI, bbox_inches="tight")
+        plt.close(fig)
 
 
 def _plot_components_raw_individual(components: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
@@ -862,103 +832,11 @@ def _plot_components_raw_individual(components: pd.DataFrame, low_income: Option
 
     for comp, series, unit, filename in configs:
         fig, ax = plt.subplots(figsize=(_FIG_W, 2.7))
-        event_positions = None
-        candidate_overrides = None
-        event_anchor_dates = None
-        if comp == "C":
-            event_positions = {"Programa\nDesenrola": {"coords": "data", "y": 22.5}}
-            candidate_overrides = {
-                **_CLOSE_LABEL_OVERRIDES,
-                "start": [
-                    (0, -7, "center", "top"),
-                    (-1, -7, "center", "top"),
-                    (2, -7, "left", "top"),
-                    (-2, -5, "center", "top"),
-                    (3, -5, "left", "top"),
-                ],
-                "end": [
-                    (2, 7, "left", "bottom"),
-                    (0, 7, "center", "bottom"),
-                    (-2, 7, "right", "bottom"),
-                    (4, 5, "left", "bottom"),
-                    (-4, 7, "right", "bottom"),
-                ],
-            }
-            event_anchor_dates = _local_peak_dates_near_events(
-                series, window_months=6, events=_HISTORICAL_EVENTS,
-            )
-        elif comp == "I":
-            candidate_overrides = {
-                **_CLOSE_LABEL_OVERRIDES,
-                "end": [
-                    (2, 7, "left", "bottom"),
-                    (0, 7, "center", "bottom"),
-                    (4, 5, "left", "bottom"),
-                    (-2, 7, "right", "bottom"),
-                    (-4, 7, "right", "bottom"),
-                ],
-            }
-            event_anchor_dates = {
-                "Pandemia\nCOVID-19": _nearest_local_peak_after_date(
-                    series,
-                    KEY_EVENTS["Pandemia\nCOVID-19"],
-                    window_months=6,
-                )
-            }
-        elif comp == "Q":
-            candidate_overrides = {
-                **_CLOSE_LABEL_OVERRIDES,
-                "start": [
-                    (-2, -5, "right", "top"),
-                    (-1, -7, "right", "top"),
-                    (-3, -3, "right", "top"),
-                    (-2, 0, "right", "center"),
-                    (0, -7, "center", "top"),
-                ],
-                "end": [
-                    (2, 7, "left", "bottom"),
-                    (0, 7, "center", "bottom"),
-                    (4, 5, "left", "bottom"),
-                    (-2, 7, "right", "bottom"),
-                    (-4, 7, "right", "bottom"),
-                ],
-                "event::Programa\nDesenrola": [
-                    (0, -7, "center", "top"),
-                    (2, -7, "left", "top"),
-                    (-2, -7, "right", "top"),
-                    (4, -5, "left", "top"),
-                    (-4, -5, "right", "top"),
-                ],
-                "post_pandemic_min": [
-                    (-6, 0, "right", "center"),
-                    (-6, 3, "right", "bottom"),
-                    (-6, -3, "right", "top"),
-                    (-8, 0, "right", "center"),
-                    (-8, 3, "right", "bottom"),
-                ],
-            }
-            event_anchor_dates = {
-                "Pandemia\nCOVID-19": _nearest_local_peak_after_date(
-                    series,
-                    KEY_EVENTS["Pandemia\nCOVID-19"],
-                    window_months=6,
-                )
-            }
-        _plot_raw_component_panel(
-            ax,
-            comp,
-            series,
-            unit,
-            show_event_labels=True,
-            event_positions=event_positions,
-            show_xlabel=True,
-            include_post_pandemic_min=True,
-            event_anchor_dates=event_anchor_dates,
-            candidate_overrides=candidate_overrides,
-        )
+        low = low_income[comp].dropna() if low_income is not None and comp in ("I", "Q") else None
+        dashed = _plot_raw_component_panel(ax, comp, series, unit, low=low, low_label=overlay.SINGLE_LABEL, tight_layout=True)
+        if dashed is not None:
+            overlay.component_legend(ax, dashed)
         fig.tight_layout()
-        if low_income is not None and comp in ("I", "Q"):
-            _overlay(overlay.component_single, fig, comp, low_income)
         _save(fig, filename)
 
 
@@ -993,7 +871,54 @@ def _plot_components_normalized(index_df: pd.DataFrame, low_income: Optional[pd.
     _save(fig, "components_normalized.png")
 
 
-def _plot_index(index_df: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
+def _strict_value_labels(ax, points: list, artists: list, lines: list, fmt: str = ".3f") -> None:
+    """Value labels that cover no line, marker, other label or ``artists`` (legend, event names).
+
+    ``points`` holds ``(date, value, color, kind)``; minima (``kind`` ending in ``min``) are labelled below their
+    point and the others above, at the nearest free offset (with a leader line when away from the point; see
+    ``src.plot_recent``), and clearly nearer its own point than any other line, so that a value is never read as
+    belonging to the other series.  The last months are placed first.  A point without a free offset keeps no label
+    nor marker.
+    """
+    from src import plot_recent as R
+
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    obstacles = [artist.get_window_extent(renderer) for artist in artists]
+    obstacles += R.marker_boxes(ax, [p[0] for p in points], [p[1] for p in points])
+    samples = [R.line_samples(ax, s.index, s.values) for s in lines]
+    first = {"end": 0, "start": 1}
+    for date, value, color, kind in sorted(points, key=lambda p: first.get(p[3], 2)):
+        below = kind.endswith("min")
+        candidates = _PERIOD_BELOW if below else _PERIOD_ABOVE
+        if kind == "end":  # next to the last month first; then to its right, where the axes leave room
+            near = [o for o in candidates if R._distance(o) <= R._LEADER_PT]
+            far = [o for o in candidates if R._distance(o) > R._LEADER_PT]
+            candidates = near + [(dx, dy) for dx in (24, 30) for dy in (3, -3, 9, -9)] + far
+        for label in R._options(ax, renderer, date, value, num(value, fmt), color, candidates, obstacles, samples,
+                                associate=True):
+            obstacles.append(label.text_bbox)
+            ax.plot(date, value, "o", color=color, markersize=4, zorder=6)
+            break
+
+
+# Start of the figure of the recent period (``index_since_2022.png``): six months before the Programa Desenrola,
+# so that both programs and the months before each of them are shown with the format of ``index.png``.
+RECENT_START = pd.Timestamp("2022-12-01")
+
+
+def _plot_index(
+    index_df: pd.DataFrame,
+    low_income: Optional[pd.DataFrame] = None,
+    *,
+    start: Optional[pd.Timestamp] = None,
+    filename: str = "index.png",
+) -> None:
+    """``index.png`` (full history) or, with ``start``, the same figure from ``start`` on (``index_since_2022.png``)."""
+    if start is not None:
+        _plot_index_since(index_df, low_income, start, filename)
+        return
     # Figure 1 has its own full-width annex page. A square source uses the page
     # vertically without changing fonts, the 150 mm width, or the data scale.
     fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_W))
@@ -1005,6 +930,9 @@ def _plot_index(index_df: pd.DataFrame, low_income: Optional[pd.DataFrame] = Non
     )
 
     _style_ax(ax, ylabel="Índice [0 – 1]", ylim=(0, 1.05))
+    # Room after the last month for the labels of its values (three decimals), clear of both lines.
+    last = index_df["index"].dropna().index[-1]
+    ax.set_xlim(right=mdates.date2num(last + pd.DateOffset(months=10)))
     event_texts = _add_events(ax, label_positions={
         "Pandemia\nCOVID-19": {
             "coords": "data",
@@ -1019,21 +947,23 @@ def _plot_index(index_df: pd.DataFrame, low_income: Optional[pd.DataFrame] = Non
             "va": "center",
         },
     })
+    lines = [index_df["index"].dropna()]
+    if low_income is not None:
+        low = low_income["IDC"].loc[overlay.primeira_exibicao():].dropna()
+        ax.get_lines()[0].set_label("IDC Geral")
+        ax.plot(low.index, low.values, color=overlay.COLOR, linewidth=2.0, label=overlay.LABEL, zorder=4)
+        lines.append(low)
     legend = ax.legend(loc="upper left")
-    ax.set_title("Índice de Desconforto de Crédito — Min-Max — Janela Expansiva")
+    ax.set_title(f"IDC desde {_mes_ano(index_df['index'].dropna().index[0])}")  # simple titles, as in index_12m.png
 
     fig.tight_layout()
     # Preserve the historical peak labels; label the new event at its own month.
     event_anchor_dates = _local_peak_dates_near_events(
         index_df["index"], window_months=6, events=_HISTORICAL_EVENTS,
     )
-    _add_value_labels(
-        ax,
+    specs = _label_specs(
         index_df["index"],
-        INDEX_COLOR,
-        ".2f",
-        obstacle_artists=[*event_texts, legend],
-        force_left_max_near_end=False,
+        ".3f",
         include_max=False,
         include_start=True,
         include_end=True,
@@ -1041,87 +971,244 @@ def _plot_index(index_df: pd.DataFrame, low_income: Optional[pd.DataFrame] = Non
         include_post_pandemic_min=True,
         include_post_desenrola_min=True,
         event_anchor_dates=event_anchor_dates,
-        candidate_overrides={
-            "start": [
-                (6, -3, "left", "top"),
-                (6, 3, "left", "bottom"),
-                (7, 0, "left", "center"),
-                (8, -4, "left", "top"),
-                (8, 4, "left", "bottom"),
-                (10, 0, "left", "center"),
-            ],
-            "end": [
-                (-6, -3, "right", "top"),
-                (-8, -4, "right", "top"),
-                (-10, 0, "right", "center"),
-                (-10, -6, "right", "top"),
-                (0, -8, "center", "top"),
-                (2, 7, "left", "bottom"),
-                (0, 7, "center", "bottom"),
-                (4, 5, "left", "bottom"),
-                (-2, 7, "right", "bottom"),
-                (-4, 7, "right", "bottom"),
-                (2, 5, "left", "bottom"),
-            ],
-            "event::Pandemia\nCOVID-19": [
-                (6, 0, "left", "center"),
-                (6, -3, "left", "top"),
-                (6, 3, "left", "bottom"),
-                (-6, 0, "right", "center"),
-                (8, 0, "left", "center"),
-                (8, -4, "left", "top"),
-                (8, 4, "left", "bottom"),
-                (-8, 0, "right", "center"),
-            ],
-            "event::Programa\nDesenrola": [
-                (6, 3, "left", "bottom"),
-                (6, -3, "left", "top"),
-                (-6, 3, "right", "bottom"),
-                (-6, -3, "right", "top"),
-                (8, 4, "left", "bottom"),
-                (8, -4, "left", "top"),
-                (-8, 4, "right", "bottom"),
-                (-8, -4, "right", "top"),
-            ],
-            "event::Novo\nDesenrola": [
-                (-6, -14, "right", "top"),
-                (-12, -18, "right", "top"),
-                (-6, -3, "right", "top"),
-                (-6, 3, "right", "bottom"),
-                (-8, -4, "right", "top"),
-                (-8, 4, "right", "bottom"),
-                (-10, 0, "right", "center"),
-                (-10, -6, "right", "top"),
-            ],
-            "post_pandemic_min": [
-                (8, 0, "left", "center"),
-                (8, 4, "left", "bottom"),
-                (8, -4, "left", "top"),
-                (10, 0, "left", "center"),
-                (10, 4, "left", "bottom"),
-                (6, 0, "left", "center"),
-            ],
-            "post_desenrola_min": [
-                (8, -4, "left", "top"),
-                (8, 0, "left", "center"),
-                (-8, -4, "right", "top"),
-                (10, -2, "left", "top"),
-                (-10, -2, "right", "top"),
-                (0, -8, "center", "top"),
-            ],
-        },
-        distance_weight=1.0,
     )
+    points = [(spec["date"], spec["value"], INDEX_COLOR, spec["kind"]) for spec in specs]
     if low_income is not None:
-        _overlay(overlay.index, fig, low_income)
-    _save(fig, "index.png")
+        points += [(low.index[0], float(low.iloc[0]), overlay.COLOR, "start"), (low.index[-1], float(low.iloc[-1]), overlay.COLOR, "end")]
+    _strict_value_labels(ax, points, [legend, *event_texts], lines)
+    _save(fig, filename)
+
+
+# Value labels of the figure from ``RECENT_START``: besides the first and last months and the months of the events,
+# every turning point of each series, i.e. a month that is the highest (or lowest) of the months within
+# ``_TURNING_WINDOW`` on each side and stands at least ``_TURNING_MIN_MOVE`` above (or below) the lowest (highest).
+_TURNING_WINDOW = 4
+_TURNING_MIN_MOVE = 0.02
+# In the latest months, only the points that are hard to read are labelled (see ``_hard_to_read``), on a ladder:
+# the label of the higher value of a month above the series and of the lower one below, in staggered rows, each
+# joined to its point by a vertical leader line.  Months are about 9 pt apart in this figure, so labels of nearby
+# months need different rows.
+_PERIOD_LAST_MONTHS = 6
+_LADDER_GAP_PT = 10   # between the highest (lowest) point of the latest months and the nearest row
+_LADDER_STEP_PT = 13  # between rows
+# Offsets of the other labels (first month, events, turning points), nearest first.
+_PERIOD_GRID = sorted(((dx, dy) for dy in (7, 11, 15, 20, 26, 33) for dx in (0, -8, 8, -14, 14, -20, 20)),
+                      key=lambda o: (o[0] ** 2 + o[1] ** 2, abs(o[0])))
+_PERIOD_ABOVE = _PERIOD_GRID + [(dx, -dy) for dx, dy in _PERIOD_GRID]
+_PERIOD_BELOW = [(dx, -dy) for dx, dy in _PERIOD_GRID] + _PERIOD_GRID
+
+
+def turning_points(series: pd.Series, window: int = _TURNING_WINDOW, min_move: float = _TURNING_MIN_MOVE) -> dict:
+    """Months of the local maxima (``"max"``) and minima (``"min"``) of ``series`` (first and last months excluded)."""
+    s = series.dropna()
+    points = {}
+    for i in range(1, len(s) - 1):
+        around = s.iloc[max(0, i - window):i + window + 1]
+        value = s.iloc[i]
+        if value == around.max() and value - around.min() >= min_move:
+            points[s.index[i]] = "max"
+        elif value == around.min() and around.max() - value >= min_move:
+            points[s.index[i]] = "min"
+    return points
+
+
+def _on_the_bounds(value: float) -> bool:
+    """A value read on the gridlines of the bounds of the index (1,000 and 0,000) needs no label."""
+    return round(value, 3) in (0.0, 1.0)
+
+
+def _hard_to_read(series: pd.Series, months: pd.DatetimeIndex, events: dict) -> list:
+    """Latest months of ``series`` whose value is hard to read on the figure.
+
+    The last month, the months of the events, and the months where the series turns (it rises and then falls, or
+    the reverse): there the line zigzags and crosses the other series, so the eye cannot follow it to the axis.
+    Values on the bounds of the index (1,000 and 0,000) are read on their gridlines and are left out.
+    """
+    s = series.dropna()
+    chosen = []
+    for date in months:
+        if date not in s.index or _on_the_bounds(float(s.loc[date])):
+            continue
+        i = s.index.get_loc(date)
+        turns = 0 < i < len(s) - 1 and (s.iloc[i] - s.iloc[i - 1]) * (s.iloc[i + 1] - s.iloc[i]) < 0
+        if date == s.index[-1] or date in events.values() or turns:
+            chosen.append(date)
+    return chosen
+
+
+def _period_label_months(series: pd.Series, events: dict, ladder_start: pd.Timestamp) -> dict:
+    """Months before the ladder to label in one series, with their kind: ``"start"``, ``"event"``, ``"max"`` or ``"min"``."""
+    s = series.dropna().loc[:ladder_start - pd.DateOffset(months=1)]
+    months = dict(turning_points(series.dropna()))
+    months = {date: kind for date, kind in months.items() if date < ladder_start}
+    for date in events.values():
+        if s.index[0] <= date <= s.index[-1]:
+            months[date] = "event"
+    months[s.index[0]] = "start"
+    return {date: kind for date, kind in months.items() if not _on_the_bounds(float(series.loc[date]))}
+
+
+_MES_ABREV = {1: "jan", 2: "fev", 3: "mar", 4: "abr", 5: "mai", 6: "jun",
+              7: "jul", 8: "ago", 9: "set", 10: "out", 11: "nov", 12: "dez"}
+
+
+def _mes_ano(date) -> str:
+    """``dez-2022``, the month-year format of the report."""
+    return f"{_MES_ABREV[date.month]}-{date.year}"
+
+
+def _ladder(ax, renderer, zone: list, rows: int, fmt, top: float, bottom: float) -> list:
+    """Labels of the latest months on staggered rows above ``top`` and below ``bottom``, with vertical leader lines.
+
+    ``zone`` holds ``(date, [(value, color, side)])`` with ``side`` ``"above"`` or ``"below"``; the rows of each side
+    are taken in turn, so that labels of nearby months do not meet.
+    """
+    pt = ax.figure.dpi / 72
+    to_data = (ax.get_ylim()[1] - ax.get_ylim()[0]) / ax.get_window_extent(renderer).height  # data units per pixel
+    labels = []
+    turn = {"above": 0, "below": 0}
+    for date, points in zone:
+        placed = []
+        for y, color, side in points:
+            row = turn[side] % rows
+            turn[side] += 1
+            gap = (_LADDER_GAP_PT + row * _LADDER_STEP_PT) * pt * to_data
+            placed.append(((y, color), top + gap if side == "above" else bottom - gap, "bottom" if side == "above" else "top"))
+        for (y, color), y_text, va in placed:
+            label = ax.annotate(fmt(y), xy=(date, y), xytext=(date, y_text), textcoords="data", ha="center", va=va,
+                                fontsize=8.5, color=color, zorder=8, bbox=dict(facecolor="white", edgecolor="none", alpha=0.9, pad=0.8),
+                                arrowprops=dict(arrowstyle="-", color=color, linewidth=0.6, shrinkA=0, shrinkB=3))
+            label.update_positions(renderer)
+            labels.append(label)
+    return labels
+
+
+def _ladder_room(rows: int) -> float:
+    """Points needed above (or below) the latest months for the ladder."""
+    return _LADDER_GAP_PT + (rows - 1) * _LADDER_STEP_PT + 14
+
+
+def _plot_index_since(index_df: pd.DataFrame, low_income: Optional[pd.DataFrame], start: pd.Timestamp, filename: str) -> None:
+    """The index figure restricted to the months from ``start``, with a vertical scale fitted to the period.
+
+    It keeps the look of ``index.png`` (size, title, colors, event lines) and labels more points.  In the latest
+    ``_PERIOD_LAST_MONTHS`` months, the points that are hard to read (``_hard_to_read``) are labelled on a ladder
+    (``_ladder``).  Before them, the first month, the months of the events and the turning points of each series
+    are labelled by the routine of
+    ``index_12m.png`` (clear of the lines, markers, other labels and event names, with a leader line when away from
+    their point).  Values of 1,000 and 0,000 are read on their gridlines and never labelled.  A label that finds no
+    free place is left out, since the window grows every month.  If the ladder
+    itself does not fit, the figure is not saved.  The horizontal axis has slanted month ticks, one per quarter while
+    the window has up to four years.
+    """
+    from matplotlib.text import Text
+
+    from src import plot_recent as R
+
+    series = [("IDC Geral", index_df["index"].loc[start:].dropna(), INDEX_COLOR)]
+    if low_income is not None:
+        low = low_income["IDC"].loc[max(start, overlay.primeira_exibicao()):].dropna()
+        if not low.empty:
+            series.append((overlay.LABEL, low, overlay.COLOR))
+    events = {label: date for label, date in KEY_EVENTS.items() if date >= start}
+    zone_months = series[0][1].index[-_PERIOD_LAST_MONTHS:]
+    # Hard-to-read points of the latest months; the higher value of a month is labelled above the series and the
+    # lower one below, so that a vertical leader never crosses the other series.
+    chosen = {name: set(_hard_to_read(s, zone_months, events)) for name, s, _ in series}
+    zone = []
+    for date in zone_months:
+        at_date = sorted(((float(s.loc[date]), color, name) for name, s, color in series if date in s.index), key=lambda p: p[0])
+        points = [(y, color, "above" if i == len(at_date) - 1 else "below")
+                  for i, (y, color, name) in enumerate(at_date) if date in chosen[name]]
+        if points:
+            zone.append((date, points))
+    zone_values = [float(s.loc[d]) for _, s, _ in series for d in zone_months if d in s.index]
+    fmt = lambda y: num(y, ".3f")  # noqa: E731 - three decimals and a decimal comma, as in the text of the report
+    values = pd.concat([s for _, s, _ in series])
+    zone_top, zone_bottom = max(zone_values), min(zone_values)
+
+    for rows in (3, 4, 5):
+        fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_W))
+        for name, s, color in series:
+            ax.plot(s.index, s.values, color=color, label=name, zorder=4)
+        _style_ax(ax, ylabel="Índice [0 – 1]")
+        # Slanted month ticks: every quarter (dez, mar, jun, set) while the window has up to four years, then every
+        # half-year (dez, jun) and every year (dez); never after the last month.
+        n_months = len(series[0][1])
+        tick_months = (3, 6, 9, 12) if n_months <= 48 else (6, 12) if n_months <= 96 else (12,)
+        ticks = [d for d in series[0][1].index if d.month in tick_months]
+        ax.xaxis.set_major_locator(plt.FixedLocator(mdates.date2num(ticks)))
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: _mes_ano(mdates.num2date(x))))
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        # Room on the right for the label of the last month, centred on its point.
+        span = series[0][1].index[-1] - series[0][1].index[0]
+        ax.set_xlim(series[0][1].index[0] - pd.DateOffset(days=20),
+                    series[0][1].index[-1] + max(pd.Timedelta(days=50), span * 0.035))
+        event_texts = _add_events(ax, label_positions={label: {"y": 0.03, "va": "bottom"} for label in events}, events=events)
+        legend = ax.legend(loc="upper center")  # in the free band above the trough of 2024
+        ax.set_title(f"IDC desde {_mes_ano(start)}")
+        # The vertical scale fits the period and leaves room for the ladder; ticks only within [0, 1].
+        low_y, high_y = values.min() - 0.03, values.max() + 0.03
+        for _ in range(4):
+            ax.set_ylim(low_y, high_y)
+            fig.tight_layout()
+            fig.canvas.draw()
+            per_pt = (high_y - low_y) / ax.get_window_extent(fig.canvas.get_renderer()).height * fig.dpi / 72
+            low_y = max(0.0, min(values.min() - 0.03, zone_bottom - _ladder_room(rows) * per_pt))
+            high_y = max(values.max() + 0.03, zone_top + _ladder_room(rows) * per_pt)
+        ax.set_ylim(low_y, high_y)
+        ax.set_yticks([t for t in np.arange(np.ceil(low_y / 0.05) * 0.05, 1.0001, 0.05) if t <= high_y])
+        fig.tight_layout()
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        ladder = _ladder(ax, renderer, zone, rows, fmt, zone_top, zone_bottom)
+        boxes = [Text.get_window_extent(label, renderer) for label in ladder]
+        frame = ax.get_window_extent(renderer)
+        clear = all(not a.overlaps(b) for i, a in enumerate(boxes) for b in boxes[i + 1:])
+        if clear and all(R._inside(box, frame) for box in boxes):
+            break
+        plt.close(fig)
+    else:
+        raise R.LabelLayoutError(f"{filename}: the labels of the latest months do not fit")
+
+    # Other months to label, the required ones first; months shared by the two series are labelled together.
+    wanted: dict = {}
+    for _, s, color in series:
+        for date, kind in _period_label_months(s, events, zone_months[0]).items():
+            wanted.setdefault(date, []).append((float(s.loc[date]), color, kind))
+    order = {"event": 0, "start": 1, "max": 2, "min": 2}
+    months = sorted(wanted, key=lambda d: (min(order[k] for _, _, k in wanted[d]), d))
+
+    obstacles = [legend.get_window_extent(renderer), *(text.get_window_extent(renderer) for text in event_texts), *boxes]
+    lines = [R.line_samples(ax, s.index, s.values) for _, s, _ in series]
+    for date in months:
+        obstacles += R.marker_boxes(ax, [date] * len(wanted[date]), [y for y, _, _ in wanted[date]])
+    for date, points in zone:
+        obstacles += R.marker_boxes(ax, [date] * len(points), [y for y, _, _ in points])
+        for y, color, _ in points:
+            ax.plot(date, y, "o", color=color, markersize=4, zorder=6)
+    for date in months:
+        points = sorted(wanted[date], key=lambda p: p[0])
+        kinds = {k for _, _, k in points}
+        single = _PERIOD_BELOW if kinds == {"min"} else _PERIOD_ABOVE
+        try:
+            R.place_month(ax, renderer, date, [(y, c) for y, c, _ in points], obstacles, lines, fmt=fmt, single=single,
+                          figure=filename, above=_PERIOD_ABOVE, below=_PERIOD_BELOW)
+        except R.LabelLayoutError:
+            continue  # a month without room keeps no label nor marker (the event lines are always drawn)
+        for y, color, _ in points:
+            ax.plot(date, y, "o", color=color, markersize=4, zorder=6)
+    _save(fig, filename)
 
 
 def plot_all(components: pd.DataFrame, index_df: pd.DataFrame, low_income: Optional[pd.DataFrame] = None) -> None:
-    """Save the six figures; ``low_income`` (see ``src.low_income``) adds the low-income series to four of them."""
+    """Save the eight figures; ``low_income`` (see ``src.low_income``) adds the low-income series to six of them."""
     _apply_excel_style()
     print("Salvando figuras em outputs/figures/:")
     _plot_components_raw(components, low_income)
     _plot_components_raw_individual(components, low_income)
     _plot_components_normalized(index_df, low_income)
     _plot_index(index_df, low_income)
+    _plot_index(index_df, low_income, start=RECENT_START, filename="index_since_2022.png")
+    plot_recent(index_df, low_income, FIGURES_DIR / "index_12m.png")
+    print("  index_12m.png")

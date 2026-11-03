@@ -1,4 +1,4 @@
-"""Build the statistical appendix of the IDC (a separate PDF) for one BCB release.
+"""Build the statistical appendix of the IDC (PDF and editable DOCX) for one BCB release.
 
 The appendix gathers what the monthly report leaves out: the two indices of the report (general and
 low-income), the anatomy of the changes of I, Q and C, the decompositions of I and Q by income class, lender,
@@ -8,7 +8,7 @@ the filled monthly report, so it is built *after* ``outputs/report/update-AAAAMM
 
 Command line (from the repository root, after ``python3 main.py`` and the monthly report)::
 
-    python3 -m src.build_appendix 202609                # writes idc-apendice-202609.tex/.pdf next to the report
+    python3 -m src.build_appendix 202609                # writes .tex, .pdf and .docx next to the report
     python3 -m src.build_appendix 202609 --draft        # "Versão para discussão" on the cover
     python3 -m src.build_appendix 202609 --no-sgs-update  # do not call the SGS API; use data/processed/sgs_snapshot.csv
 
@@ -31,6 +31,7 @@ from src import scr_data, sgs_api
 from src.anatomy import SGS_CODES
 from src.appendix_data import DadosApendice, reunir
 from src.appendix_document import FIGURAS, gerar_figuras, montar_corpo
+from src.build_appendix_docx import build_docx
 from src.pt_format import mes
 
 REPORT_DIR = "outputs/report/update-{period}"
@@ -39,7 +40,8 @@ CRI_CSV = Path("data/external/cri_faixa_ref202504.csv")
 LUALATEX_FALLBACK = "/Library/TeX/texbin/lualatex"
 MACROS = ("reporttitle", "mesreferencia", "mesref", "competencia", "mespublicacao", "janelainicio", "seriesinicio",
           "reportdate", "authorone", "authortwo", "authorthree")
-SHARED_FIGURES = ("index.png", "components_raw.png")  # figures of the monthly report, with the low-income lines
+INSTITUICAO_PADRAO = "FGVcemif / FGV-EAESP"
+SHARED_FIGURES = ("index.png",)  # figure of the monthly report, with the low-income line
 
 
 class NotBuilt(Exception):
@@ -129,7 +131,9 @@ def document(d: DadosApendice, report_tex: str, draft: bool = False) -> str:
     if macros["mesref"] != mes(d.t1):
         raise ValueError(f"o relatório mensal trata de {macros['mesref']}, mas o IDC termina em {mes(d.t1)}")
     definitions = "\n".join(rf"\newcommand{{\{name}}}{{{macros[name]}}}" for name in MACROS)
-    subtitle = r"Apêndice Estatístico --- Divulgação \mespublicacao; competência \mesreferencia"
+    # Institution of the running header (reports before 202610 do not define it).
+    definitions += "\n" + rf"\newcommand{{\reportinstitution}}{{{macros.get('reportinstitution', INSTITUICAO_PADRAO)}}}"
+    subtitle = r"Apêndice Estatístico --- divulgação em \mespublicacao; competência \mesreferencia"
     if draft:
         subtitle += r"\\[2pt]\normalsize\textit{Versão para discussão}"
     start = rf"""% =============================================================================
@@ -137,6 +141,7 @@ def document(d: DadosApendice, report_tex: str, draft: bool = False) -> str:
 % =============================================================================
 \usepackage{{amsmath}}
 \usepackage{{adjustbox}}
+\usepackage{{placeins}}
 \renewcommand{{\topfraction}}{{0.9}}
 \renewcommand{{\bottomfraction}}{{0.8}}
 \renewcommand{{\textfraction}}{{0.1}}
@@ -213,11 +218,11 @@ def compile_pdf(tex: Path) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Gera o apêndice estatístico do IDC (PDF) de uma divulgação do BCB.")
+    parser = argparse.ArgumentParser(description="Gera o apêndice estatístico do IDC (PDF e DOCX) de uma divulgação do BCB.")
     parser.add_argument("period", help="competência da divulgação do BCB (AAAAMM)")
     parser.add_argument("--draft", action="store_true", help='marca a capa com "Versão para discussão"')
     parser.add_argument("--no-sgs-update", action="store_true", help="não consulta a API do SGS; usa data/processed/sgs_snapshot.csv")
-    parser.add_argument("--no-pdf", action="store_true", help="só escreve o .tex")
+    parser.add_argument("--no-pdf", action="store_true", help="gera .tex e .docx, sem compilar o PDF")
     parser.add_argument("--ignore-vintage", action="store_true", help="aceita séries do SGS de safra diferente da planilha (só para testes)")
     args = parser.parse_args(argv)
     folder = Path(REPORT_DIR.format(period=args.period))
@@ -246,6 +251,13 @@ def main(argv: list[str] | None = None) -> int:
     tex = folder / f"idc-apendice-{args.period}.tex"
     tex.write_text(text, encoding="utf-8")
     print(f"Escrito: {tex} ({len(FIGURAS)} figuras próprias + {len(SHARED_FIGURES)} do relatório)")
+    docx = tex.with_suffix(".docx")
+    try:
+        build_docx(tex, docx, assets_dir=folder)
+    except (OSError, RuntimeError, ValueError) as exc:
+        print(f"Falha ao gerar DOCX: {exc}", file=sys.stderr)
+        return 1
+    print(f"DOCX gerado: {docx}")
     if args.no_pdf:
         return 0
     problems = compile_pdf(tex)

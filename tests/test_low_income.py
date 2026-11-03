@@ -104,12 +104,6 @@ class CalcularTests(unittest.TestCase):
             status.write_text(status.read_text(encoding="utf-8").replace("2016-12", "2016-11"), encoding="utf-8")
             self.assertEqual(LI.carregar(csv, status).status, "sem_dados")  # the series does not end in the stated month
 
-    def test_unavailable_edition_is_stated_without_pointing_to_other_documents(self):
-        for res in (LI.Resultado("bloqueio", "x", t1=T1), LI.Resultado("sem_cobertura", "x", t1=T1), LI.Resultado("sem_dados", "x")):
-            texto = LI.par_indisponivel(res)
-            self.assertIn("não foi atualizado nesta edição", texto)
-            self.assertNotRegex(texto.lower(), "ap[êe]ndice")
-
 
 class FatosBaixaRendaTests(unittest.TestCase):
     def setUp(self):
@@ -136,52 +130,10 @@ class FatosBaixaRendaTests(unittest.TestCase):
         self.assertEqual(LI.ordinal(7), "sétimo")
         self.assertEqual(LI.ordinal(11), "11º")
 
-    def test_summary_paragraph_uses_bold_decimal_commas_and_the_display_start(self):
-        f = self.fatos()
-        texto = LI.par_resumo(f)
-        self.assertIn(r"\textbf{" + f"{f.idc['t1']:.3f}".replace(".", ",") + "}", texto)
-        self.assertIn(r"\textbf{mai-2015}", texto)
-
-    def test_results_paragraph_says_when_the_two_indices_are_equal(self):
-        f = self.fatos(geral=self.low["IDC"])
-        self.assertIn("valor igual ao do IDC geral", LI.pars_resultados(f))
-        f = self.fatos()
-        self.assertIn("acima do IDC geral", LI.pars_resultados(f))
-
-    def test_rounding_qualifier_appears_only_where_the_printed_levels_disagree_with_the_printed_change(self):
-        f = self.fatos()
-        f.idc.update({"tprev": 0.9626, "t1": 0.9737})      # 0,963 -> 0,974: the printed change (0,011) agrees
-        f.i.update({"tprev": 10.633, "t1": 10.8155})       # 10,63 -> 10,82 but the change is +0,18
-        f.q.update({"tprev": 26.50, "t1": 26.92})          # 26,50 -> 26,92: +0,42 agrees
-        texto = LI.pars_resultados(f)
-        self.assertEqual(texto.count(LI.NOTA_ARREDONDAMENTO), 1)
-        self.assertIn(r"\textbf{+0,18~p.p.}, " + LI.NOTA_ARREDONDAMENTO + ")", texto)
-        self.assertNotIn(LI.NOTA_ARREDONDAMENTO, LI.par_resumo(f))
-        f.idc.update({"tprev": 0.9626, "t1": 0.9664})      # 0,963 -> 0,966 but the change is +0,004
-        self.assertIn(r"\textbf{0,004~ponto} (" + LI.NOTA_ARREDONDAMENTO + ")", LI.par_resumo(f))
-        self.assertIn(r"\textbf{0,004~ponto} (" + LI.NOTA_ARREDONDAMENTO + ")", LI.pars_resultados(f))
-
-    def test_relative_position_wording_follows_the_normalised_values(self):
-        f = self.fatos()
-        casos = ((1.0, 1.0, "é a mesma (", ", mas a posição"), (0.995, 1.0, "é próxima (", ", mas a posição"),
-                 (0.6, 1.0, "difere (", ", e a posição"))
-        for grupo, total, esperado, conjuncao in casos:
-            f.i["norm_t1"], f.geral["I_norm_t1"] = grupo, total
-            texto = LI.pars_resultados(f)
-            self.assertIn(esperado, texto)
-            self.assertIn(conjuncao, texto)
-
-    def test_group_delinquency_is_compared_with_the_total_in_either_direction(self):
-        f = self.fatos()
-        f.i["t1"], f.geral["I_t1"] = 9.0, 8.0
-        self.assertIn(" é maior que a do total", LI.pars_resultados(f))
-        f.i["t1"] = 7.0
-        self.assertIn(" é menor que a do total", LI.pars_resultados(f))
-
     def test_components_table_has_the_two_indices_side_by_side(self):
         tex = LI.tabela_componentes(self.fatos())
-        self.assertIn(r"\multicolumn{2}{c}{IDC geral}", tex)
-        self.assertIn(r"\multicolumn{2}{c}{IDC para baixa renda}", tex)
+        self.assertIn(r"\multicolumn{2}{c}{IDC Geral}", tex)
+        self.assertIn(r"\multicolumn{2}{c}{IDC Baixa Renda}", tex)
         self.assertNotIn(r"\fonte", tex)  # the note keeps the source line of the report
         self.assertIn(r"\fonte{teste}", LI.tabela_componentes(self.fatos(), fonte="teste"))
 

@@ -1,5 +1,6 @@
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 
@@ -49,6 +50,32 @@ class DecomposicaoTests(unittest.TestCase):
         self.assertAlmostEqual(t["contribuicao"].sum(), antes, places=12)
         self.assertAlmostEqual(t["peso_t1"].sum(), d.tabela["peso_t1"].sum(), places=9)
         self.assertIn("Demais", t.index)
+
+    def test_compacted_group_uses_each_dates_weights_for_i_and_q(self):
+        from src.exhibits import _combinar
+
+        spec = {
+            T0: {"Principal": (10000, 400, 2000), "A": (100, 10, 80), "B": (50, 20, 10), "Demais": (30, 15, 6)},
+            T1: {"Principal": (10000, 500, 2500), "A": (10, 3, 4), "B": (15, 6, 12), "Demais": (40, 12, 10)},
+        }
+        rows = []
+        for month, groups in spec.items():
+            for group, (balance, delinquent, costly) in groups.items():
+                rows.append({"data_base": month, "grupo": group, "carteira": balance,
+                             "inad": delinquent, "onerosa": costly, "ap": 0.0, "v1590": 0.0})
+        panel = pd.DataFrame(rows).set_index(["data_base", "grupo"])
+        sgs = pd.DataFrame({"saldo_total": [100.0, 100.0], "inad_total": [4.0, 5.0],
+                            **{f"saldo_{m}": [0.0, 0.0] for m in ("cheque_especial", "nao_consignado", "cartao_rotativo", "cartao_parcelado")}},
+                           index=[T0, T1])
+        ctx = SimpleNamespace(paineis={"x": panel}, sgs=sgs, t0=T0, t1=T1)
+        result, _, _, _ = _combinar(ctx, "x")
+        self.assertTrue(result.index.is_unique)
+        self.assertEqual(set(result.index), {"Principal", "Demais"})
+        group = result.loc["Demais"]
+        for month, suffix in ((T0, "t0"), (T1, "t1")):
+            selected = panel.loc[month].loc[["A", "B", "Demais"]]
+            self.assertAlmostEqual(group[f"x_{suffix}"], 100 * selected["inad"].sum() / selected["carteira"].sum())
+            self.assertAlmostEqual(group[f"Q_x_{suffix}"], 100 * selected["onerosa"].sum() / selected["carteira"].sum())
 
 
 class QuebrasEConciliacaoTests(unittest.TestCase):

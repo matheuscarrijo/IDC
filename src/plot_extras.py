@@ -115,7 +115,7 @@ def fig_idc_por_faixa(idc: pd.DataFrame, headline: pd.Series, path: Path) -> Non
                                      for k in ("Pandemia\nCOVID-19", "Programa\nDesenrola", "Novo\nDesenrola")},
                 events={k: v for k, v in KEY_EVENTS.items() if v >= inicio})
     ax.legend(loc="upper center", fontsize=9, ncol=3, bbox_to_anchor=(0.5, -0.07))
-    ax.set_title("IDC por faixa de renda — C nacional, I e Q de cada faixa", fontsize=11.5)
+    ax.set_title("IDC por faixa de renda", fontsize=11.5)  # simple titles, as in the IDC figures of the report
     fig.tight_layout()
     _save(fig, path)
 

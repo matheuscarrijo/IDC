@@ -130,15 +130,21 @@ def _combinar(ctx: Contexto, lente: str, ordem: list[str] | None = None, compact
         # compact I and Q tables consistently: merge units below 0.5% weight
         pequenos = comb.index[(comb["peso_t1"] < 0.5) & (comb.index != "Demais") & (~comb.index.isin(manter))]
         if len(pequenos):
-            resto = comb.loc[pequenos]
+            # An existing "Demais" belongs in the same aggregate, not a duplicate row.
+            membros = pequenos.append(pd.Index(["Demais"]) if "Demais" in comb.index else pd.Index([]))
+            resto = comb.loc[membros]
             w = resto["peso_t1"].sum()
             linha = {"peso_t1": w}
             for col in ("dentro", "composicao", "contribuicao", "Q_contribuicao"):
                 linha[col] = resto[col].sum()
-            for col in ("x_t0", "x_t1", "Q_x_t0", "Q_x_t1"):
-                linha[col] = (resto[col] * resto["peso_t1"]).sum() / w
+            pesos_t0 = L.taxas(p)["peso"].unstack().loc[ctx.t0].reindex(membros).fillna(0)
+            w0 = pesos_t0.sum()
+            for col in ("x_t0", "Q_x_t0"):
+                linha[col] = (resto[col] * pesos_t0).sum() / w0 if w0 else float("nan")
+            for col in ("x_t1", "Q_x_t1"):
+                linha[col] = (resto[col] * resto["peso_t1"]).sum() / w if w else float("nan")
             linha["dx"] = linha["x_t1"] - linha["x_t0"]
-            comb = pd.concat([comb.drop(index=pequenos), pd.DataFrame(linha, index=["Demais"])])
+            comb = pd.concat([comb.drop(index=membros), pd.DataFrame(linha, index=["Demais"])])
     if ordem:
         comb = comb.reindex([u for u in ordem if u in comb.index])
     return comb, dI, dQ, nac
@@ -155,11 +161,11 @@ def tabela_lente(ctx: Contexto, lente: str, titulo: str, rotulo: str, ordem: lis
     linhas = []
     for unidade, r in comb.iterrows():
         linhas.append([unidade, num(r["peso_t1"], 1), num(r["x_t0"], 2), num(r["x_t1"], 2), num(r["contribuicao"], 2, True),
-                       num(r["Q_x_t1"], 1), num(r["Q_contribuicao"], 2, True)])
+                       num(r["Q_x_t0"], 2), num(r["Q_x_t1"], 2), num(r["Q_contribuicao"], 2, True)])
         if memo_sem_rendimento is not None and unidade == "Até 2 SM":
             m = memo_sem_rendimento
             linhas.append([r"\quad\textit{dos quais sem rendimento}", num(m["peso"], 1), num(m["I_t0"], 2), num(m["I_t1"], 2), "---",
-                           num(m["Q_t1"], 1), "---"])
+                           num(m["Q_t0"], 2), num(m["Q_t1"], 2), "---"])
     aviso_q = ""
     if ctx.conc.get("status_Q", "ok") != "ok" and primeiro:
         aviso_q = (f" Atenção: a variação de Q no SCR.data ({num(dQ.delta_scr, 2, True)} p.p.) difere da oficial ({num(dQ.delta_oficial, 2, True)} p.p.) em "
@@ -170,13 +176,14 @@ def tabela_lente(ctx: Contexto, lente: str, titulo: str, rotulo: str, ordem: lis
         aviso_q += (f" O nível de Q no SCR.data ({num(nac1['Q'], 1)}\\%) difere do oficial ({num(q_ofic, 1)}\\%) por diferenças de "
                     "classificação das modalidades entre as fontes.")
     linhas.append([r"\textit{Total (SCR.data)}", "100,0", num(nac0["I"], 2), num(nac1["I"], 2), num(dI.delta_scr, 2, True),
-                   num(nac1["Q"], 1), num(dQ.delta_scr, 2, True)])
+                   num(nac0["Q"], 2), num(nac1["Q"], 2), num(dQ.delta_scr, 2, True)])
+    q_of = lambda t: 100 * sum(ctx.sgs[f"saldo_{m}"].loc[t] for m in Q_MODALIDADES) / ctx.sgs["saldo_total"].loc[t]  # noqa: E731
     linhas.append([r"\textit{Variação oficial (SGS)}", "", num(ctx.sgs["inad_total"].loc[ctx.t0], 2), num(ctx.sgs["inad_total"].loc[ctx.t1], 2),
-                   num(dI.delta_oficial, 2, True), "", num(dQ.delta_oficial, 2, True)])
+                   num(dI.delta_oficial, 2, True), num(q_of(ctx.t0), 2), num(q_of(ctx.t1), 2), num(dQ.delta_oficial, 2, True)])
     tex = tabela_latex(
         titulo, rotulo,
-        ["Segmento", r"Peso (\%)", f"I {mes(ctx.t0)}", f"I {mes(ctx.t1)}", "Contrib. I", f"Q {mes(ctx.t1)}", "Contrib. Q"],
-        linhas, COL_ROTULO + "rrrrrr",
+        ["Segmento", r"Peso (\%)", f"I {mes(ctx.t0)}", f"I {mes(ctx.t1)}", "Contrib. I", f"Q {mes(ctx.t0)}", f"Q {mes(ctx.t1)}", "Contrib. Q"],
+        linhas, COL_ROTULO + "rrrrrrr",
         FONTE_SCR + " Contribuições à variação de I e de Q em 12 meses (p.p.); a diferença entre o total do SCR.data e a variação oficial do SGS é o resíduo (ver Notas)."
         + (" " + nota_quebras if nota_quebras else "") + aviso_q,
         tamanho=r"\small", separadores=(len(linhas) - 3,))
@@ -193,6 +200,7 @@ def memo_sem_rendimento(ctx: Contexto, bruto: pd.DataFrame) -> dict:
     return {"peso": float(100 * sr["carteira"].loc[ctx.t1] / total.loc[ctx.t1]),
             "I_t0": float(100 * sr["inad"].loc[ctx.t0] / sr["carteira"].loc[ctx.t0]),
             "I_t1": float(100 * sr["inad"].loc[ctx.t1] / sr["carteira"].loc[ctx.t1]),
+            "Q_t0": float(100 * sr["onerosa"].fillna(0).loc[ctx.t0] / sr["carteira"].loc[ctx.t0]),
             "Q_t1": float(100 * sr["onerosa"].fillna(0).loc[ctx.t1] / sr["carteira"].loc[ctx.t1])}
 
 
